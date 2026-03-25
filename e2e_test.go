@@ -96,7 +96,7 @@ func TestE2E_FetchMetadataThroughDNS(t *testing.T) {
 		t.Fatalf("create fetcher: %v", err)
 	}
 
-	meta, err := fetcher.FetchMetadata()
+	meta, err := fetcher.FetchMetadata(context.Background())
 	if err != nil {
 		t.Fatalf("fetch metadata: %v", err)
 	}
@@ -136,7 +136,7 @@ func TestE2E_FetchChannelMessages(t *testing.T) {
 		t.Fatalf("create fetcher: %v", err)
 	}
 
-	meta, err := fetcher.FetchMetadata()
+	meta, err := fetcher.FetchMetadata(context.Background())
 	if err != nil {
 		t.Fatalf("fetch metadata: %v", err)
 	}
@@ -146,7 +146,7 @@ func TestE2E_FetchChannelMessages(t *testing.T) {
 		t.Fatal("expected blocks > 0")
 	}
 
-	fetchedMsgs, err := fetcher.FetchChannel(1, blockCount)
+	fetchedMsgs, err := fetcher.FetchChannel(context.Background(), 1, blockCount)
 	if err != nil {
 		t.Fatalf("fetch channel: %v", err)
 	}
@@ -180,14 +180,14 @@ func TestE2E_FetchWithDoubleLabel(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create fetcher: %v", err)
 	}
-	fetcher.SetQueryMode(protocol.QueryDoubleLabel)
+	fetcher.SetQueryMode(protocol.QueryMultiLabel)
 
-	meta, err := fetcher.FetchMetadata()
+	meta, err := fetcher.FetchMetadata(context.Background())
 	if err != nil {
 		t.Fatalf("fetch metadata: %v", err)
 	}
 
-	fetchedMsgs, err := fetcher.FetchChannel(1, int(meta.Channels[0].Blocks))
+	fetchedMsgs, err := fetcher.FetchChannel(context.Background(), 1, int(meta.Channels[0].Blocks))
 	if err != nil {
 		t.Fatalf("fetch channel: %v", err)
 	}
@@ -216,7 +216,7 @@ func TestE2E_WrongPassphrase(t *testing.T) {
 		t.Fatalf("create fetcher: %v", err)
 	}
 
-	_, err = fetcher.FetchMetadata()
+	_, err = fetcher.FetchMetadata(context.Background())
 	if err == nil {
 		t.Fatal("expected error with wrong passphrase, got nil")
 	}
@@ -243,12 +243,12 @@ func TestE2E_LargeMessages(t *testing.T) {
 		t.Fatalf("create fetcher: %v", err)
 	}
 
-	meta, err := fetcher.FetchMetadata()
+	meta, err := fetcher.FetchMetadata(context.Background())
 	if err != nil {
 		t.Fatalf("fetch metadata: %v", err)
 	}
 
-	fetchedMsgs, err := fetcher.FetchChannel(1, int(meta.Channels[0].Blocks))
+	fetchedMsgs, err := fetcher.FetchChannel(context.Background(), 1, int(meta.Channels[0].Blocks))
 	if err != nil {
 		t.Fatalf("fetch channel: %v", err)
 	}
@@ -586,8 +586,15 @@ func TestE2E_FullRoundTrip(t *testing.T) {
 		t.Fatalf("config POST status=%d", resp.StatusCode)
 	}
 
-	// Wait for auto-refresh to fetch data
-	time.Sleep(3 * time.Second)
+	// Refresh channels via selected-channel API semantics.
+	respRefresh1, err := http.Post(base+"/api/refresh?channel=1", "application/json", nil)
+	if err != nil {
+		t.Fatalf("POST /api/refresh?channel=1: %v", err)
+	}
+	respRefresh1.Body.Close()
+	// Give channel 1 refresh goroutine time to complete before refreshing channel 2,
+	// because starting a new refresh cancels the previous in-flight refresh.
+	time.Sleep(700 * time.Millisecond)
 
 	// Channels should be populated
 	resp2, err := http.Get(base + "/api/channels")
@@ -620,6 +627,13 @@ func TestE2E_FullRoundTrip(t *testing.T) {
 	if msgList[0].Text != "General message 1" {
 		t.Errorf("msg[0].Text = %q, want %q", msgList[0].Text, "General message 1")
 	}
+
+	respRefresh2, err := http.Post(base+"/api/refresh?channel=2", "application/json", nil)
+	if err != nil {
+		t.Fatalf("POST /api/refresh?channel=2: %v", err)
+	}
+	respRefresh2.Body.Close()
+	time.Sleep(700 * time.Millisecond)
 
 	// Messages for channel 2
 	resp4, err := http.Get(base + "/api/messages/2")

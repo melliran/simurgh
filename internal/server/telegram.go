@@ -80,7 +80,7 @@ func NewTelegramReader(cfg TelegramConfig, channelUsernames []string, feed *Feed
 		channels: cleaned,
 		feed:     feed,
 		cache:    make(map[string]cachedMessages),
-		cacheTTL: 1 * time.Minute,
+		cacheTTL: 5 * time.Minute,
 	}
 }
 
@@ -115,7 +115,7 @@ func (tr *TelegramReader) Run(ctx context.Context) error {
 		tr.fetchAll(ctx, api)
 
 		// Periodic fetch loop
-		ticker := time.NewTicker(1 * time.Minute)
+		ticker := time.NewTicker(3 * time.Minute)
 		defer ticker.Stop()
 
 		for {

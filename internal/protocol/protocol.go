@@ -1,14 +1,21 @@
 package protocol
 
 import (
+	"crypto/rand"
 	"encoding/binary"
 	"fmt"
+	"math/big"
 )
 
 const (
-	// DefaultBlockPayload is the decrypted payload per DNS TXT block.
-	// Calculated to stay within 512-byte UDP DNS limit after encryption + base64 + padding overhead.
-	DefaultBlockPayload = 180
+	// MinBlockPayload is the minimum decrypted payload per DNS TXT block.
+	MinBlockPayload = 200
+	// MaxBlockPayload is the maximum decrypted payload per DNS TXT block.
+	// 600 bytes data + 28 GCM overhead + 2 prefix + 32 padding → ~856 base64 chars.
+	// Well within the 4096-byte EDNS0 UDP buffer the client advertises.
+	MaxBlockPayload = 600
+	// DefaultBlockPayload is kept for compatibility; equals MaxBlockPayload.
+	DefaultBlockPayload = MaxBlockPayload
 
 	// DefaultMaxPadding is the default random padding added to responses to vary DNS response size.
 	DefaultMaxPadding = 32
@@ -210,20 +217,31 @@ func ParseMessages(data []byte) ([]Message, error) {
 	return msgs, nil
 }
 
-// SplitIntoBlocks splits data into blocks of DefaultBlockPayload size.
+// SplitIntoBlocks splits data into blocks of randomly varying size in [MinBlockPayload, MaxBlockPayload].
+// Random sizes make traffic analysis harder; the client just concatenates all blocks to reassemble.
 func SplitIntoBlocks(data []byte) [][]byte {
 	if len(data) == 0 {
-		return [][]byte{{}}
+		return [][]byte{{}} // channel 0 block 0 must always exist
 	}
 	var blocks [][]byte
-	for i := 0; i < len(data); i += DefaultBlockPayload {
-		end := i + DefaultBlockPayload
-		if end > len(data) {
-			end = len(data)
+	rem := data
+	for len(rem) > 0 {
+		size := randBlockSize()
+		if size > len(rem) {
+			size = len(rem)
 		}
-		block := make([]byte, end-i)
-		copy(block, data[i:end])
+		block := make([]byte, size)
+		copy(block, rem[:size])
 		blocks = append(blocks, block)
+		rem = rem[size:]
 	}
 	return blocks
+}
+
+func randBlockSize() int {
+	n, err := rand.Int(rand.Reader, big.NewInt(int64(MaxBlockPayload-MinBlockPayload+1)))
+	if err != nil {
+		return (MinBlockPayload + MaxBlockPayload) / 2
+	}
+	return MinBlockPayload + int(n.Int64())
 }

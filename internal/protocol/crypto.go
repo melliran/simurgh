@@ -67,3 +67,42 @@ func Decrypt(key [KeySize]byte, ciphertext []byte) ([]byte, error) {
 	nonce := ciphertext[:gcm.NonceSize()]
 	return gcm.Open(nil, nonce, ciphertext[gcm.NonceSize():], nil)
 }
+
+// encryptQueryBlock encrypts an 8-byte query payload using a direct AES-256 block cipher.
+// The payload is expanded to one AES block (16 bytes) with 8 trailing zero bytes before
+// encryption. No nonce or auth tag needed: the 4 random bytes in the payload guarantee
+// unique ciphertext per query. Result is always 16 bytes.
+func encryptQueryBlock(key [KeySize]byte, payload []byte) ([]byte, error) {
+	if len(payload) != QueryPayloadSize {
+		return nil, fmt.Errorf("encryptQueryBlock: payload must be %d bytes, got %d", QueryPayloadSize, len(payload))
+	}
+	block, err := aes.NewCipher(key[:])
+	if err != nil {
+		return nil, err
+	}
+	var buf [aes.BlockSize]byte
+	copy(buf[:QueryPayloadSize], payload) // bytes 8-15 stay zero
+	block.Encrypt(buf[:], buf[:])
+	return buf[:], nil
+}
+
+// decryptQueryBlock decrypts a query ciphertext produced by encryptQueryBlock.
+// Accepts ciphertext with optional random suffix bytes (≥ BlockSize); only the
+// first BlockSize bytes are used. Verifies the last 8 bytes of plaintext are zero.
+func decryptQueryBlock(key [KeySize]byte, ciphertext []byte) ([]byte, error) {
+	if len(ciphertext) < aes.BlockSize {
+		return nil, fmt.Errorf("decryptQueryBlock: need at least %d bytes, got %d", aes.BlockSize, len(ciphertext))
+	}
+	block, err := aes.NewCipher(key[:])
+	if err != nil {
+		return nil, err
+	}
+	var buf [aes.BlockSize]byte
+	block.Decrypt(buf[:], ciphertext[:aes.BlockSize]) // ignore suffix
+	for i := QueryPayloadSize; i < aes.BlockSize; i++ {
+		if buf[i] != 0 {
+			return nil, fmt.Errorf("decryptQueryBlock: integrity check failed (wrong key?)")
+		}
+	}
+	return buf[:QueryPayloadSize], nil
+}

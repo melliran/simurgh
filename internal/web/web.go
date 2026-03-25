@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"embed"
 	"encoding/json"
 	"fmt"
@@ -29,6 +30,11 @@ type Config struct {
 	Resolvers []string `json:"resolvers"`
 	QueryMode string   `json:"queryMode"`
 	RateLimit float64  `json:"rateLimit"`
+	// Timeout is the per-query DNS timeout in seconds (0 = default 5 s).
+	// Also used as the resolver health-check probe timeout.
+	Timeout float64 `json:"timeout,omitempty"`
+	// Debug enables verbose query logging (shows generated DNS query names).
+	Debug bool `json:"debug,omitempty"`
 }
 
 // Server is the web UI server for thefeed client.
@@ -42,6 +48,16 @@ type Server struct {
 	cache    *client.Cache
 	channels []protocol.ChannelInfo
 	messages map[int][]protocol.Message
+
+	// fetcherCtx/fetcherCancel control the lifetime of the active fetcher's
+	// background goroutines (rate limiter, noise, resolver checker).
+	// They are cancelled and recreated each time the config changes.
+	fetcherCtx    context.Context
+	fetcherCancel context.CancelFunc
+
+	// refreshMu / refreshCancel allow a new refresh to cancel an in-progress one.
+	refreshMu     sync.Mutex
+	refreshCancel context.CancelFunc
 
 	logMu    sync.RWMutex
 	logLines []string
@@ -96,7 +112,7 @@ func (s *Server) Run() error {
 	fmt.Printf("\n  Open in browser: http://%s\n\n", addr)
 
 	if s.fetcher != nil {
-		s.startAutoRefresh()
+		go s.refreshMetadataOnly()
 	}
 
 	return http.ListenAndServe(addr, mux)
@@ -164,7 +180,7 @@ func (s *Server) handleConfig(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, fmt.Sprintf("init fetcher: %v", err), 500)
 			return
 		}
-		s.startAutoRefresh()
+		go s.refreshMetadataOnly()
 		writeJSON(w, map[string]any{"ok": true})
 
 	default:
@@ -202,7 +218,28 @@ func (s *Server) handleRefresh(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", 405)
 		return
 	}
-	go s.refresh()
+	// Background (quiet) refreshes skip silently if one is already running,
+	// so the auto-refresh timer never cancels a slow in-progress fetch.
+	if r.URL.Query().Get("quiet") == "1" {
+		s.refreshMu.Lock()
+		running := s.refreshCancel != nil
+		s.refreshMu.Unlock()
+		if running {
+			writeJSON(w, map[string]any{"ok": true, "skipped": true})
+			return
+		}
+	}
+	chParam := r.URL.Query().Get("channel")
+	if chParam != "" {
+		chNum, err := strconv.Atoi(chParam)
+		if err != nil || chNum < 1 {
+			http.Error(w, "invalid channel", 400)
+			return
+		}
+		go s.refreshChannel(chNum)
+	} else {
+		go s.refreshMetadataOnly()
+	}
 	writeJSON(w, map[string]any{"ok": true})
 }
 
@@ -278,6 +315,11 @@ func (s *Server) initFetcher() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	// Cancel goroutines from the previous fetcher configuration.
+	if s.fetcherCancel != nil {
+		s.fetcherCancel()
+	}
+
 	cfg := s.config
 	if cfg == nil {
 		return fmt.Errorf("no config")
@@ -295,57 +337,81 @@ func (s *Server) initFetcher() error {
 	}
 
 	if cfg.QueryMode == "double" {
-		fetcher.SetQueryMode(protocol.QueryDoubleLabel)
+		fetcher.SetQueryMode(protocol.QueryMultiLabel)
+	} else if cfg.QueryMode == "plain" {
+		fetcher.SetQueryMode(protocol.QueryPlainLabel)
 	}
+	fetcher.SetDebug(cfg.Debug)
 	if cfg.RateLimit > 0 {
 		fetcher.SetRateLimit(cfg.RateLimit)
 	}
 
+	timeout := 5 * time.Second
+	if cfg.Timeout > 0 {
+		timeout = time.Duration(cfg.Timeout * float64(time.Second))
+	}
+	fetcher.SetTimeout(timeout)
+
 	fetcher.SetLogFunc(func(msg string) {
 		s.addLog(msg)
 	})
+
+	// Create a shared context for this fetcher's lifetime.
+	ctx, cancel := context.WithCancel(context.Background())
+	s.fetcherCtx = ctx
+	s.fetcherCancel = cancel
+
+	// Start rate limiter and noise goroutines.
+	fetcher.Start(ctx)
+
+	// Start periodic resolver health checks.
+	checker := client.NewResolverChecker(fetcher, timeout)
+	checker.SetLogFunc(func(msg string) {
+		s.addLog(msg)
+	})
+	checker.Start(ctx)
 
 	s.fetcher = fetcher
 	s.cache = cache
 	return nil
 }
 
-func (s *Server) startAutoRefresh() {
-	if s.stopRefresh != nil {
-		close(s.stopRefresh)
+func (s *Server) refreshMetadataOnly() {
+	// Cancel any in-progress refresh and start a new cancellable one.
+	s.refreshMu.Lock()
+	if s.refreshCancel != nil {
+		s.refreshCancel()
 	}
-	s.stopRefresh = make(chan struct{})
-	stop := s.stopRefresh
 
-	go s.refresh()
-
-	go func() {
-		ticker := time.NewTicker(30 * time.Second)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-stop:
-				return
-			case <-ticker.C:
-				s.refresh()
-			}
-		}
-	}()
-}
-
-func (s *Server) refresh() {
 	s.mu.RLock()
+	basectx := s.fetcherCtx
 	fetcher := s.fetcher
 	cache := s.cache
 	s.mu.RUnlock()
 
-	if fetcher == nil {
+	if fetcher == nil || basectx == nil {
+		s.refreshMu.Unlock()
 		return
 	}
 
+	// Child context: cancelled either by the next refresh call or by a config change.
+	ctx, cancel := context.WithCancel(basectx)
+	s.refreshCancel = cancel
+	s.refreshMu.Unlock()
+	defer func() {
+		cancel()
+		s.refreshMu.Lock()
+		s.refreshCancel = nil
+		s.refreshMu.Unlock()
+	}()
+
 	s.addLog("Fetching metadata...")
-	meta, err := fetcher.FetchMetadata()
+	meta, err := fetcher.FetchMetadata(ctx)
 	if err != nil {
+		if ctx.Err() != nil {
+			s.addLog("Refresh cancelled")
+			return
+		}
 		s.addLog(fmt.Sprintf("Error: %v", err))
 		return
 	}
@@ -359,31 +425,91 @@ func (s *Server) refresh() {
 	}
 
 	s.broadcast("event: update\ndata: \"channels\"\n\n")
+}
 
-	for i, ch := range meta.Channels {
-		chNum := i + 1
-		blockCount := int(ch.Blocks)
-		if blockCount <= 0 {
-			continue
-		}
-
-		msgs, err := fetcher.FetchChannel(chNum, blockCount)
-		if err != nil {
-			s.addLog(fmt.Sprintf("Channel %s error: %v", ch.Name, err))
-			continue
-		}
-
-		s.mu.Lock()
-		s.messages[chNum] = msgs
-		s.mu.Unlock()
-
-		if cache != nil {
-			_ = cache.PutMessages(chNum, msgs)
-		}
-
-		s.addLog(fmt.Sprintf("Updated %s: %d messages", ch.Name, len(msgs)))
+func (s *Server) refreshChannel(channelNum int) {
+	s.refreshMu.Lock()
+	if s.refreshCancel != nil {
+		s.refreshCancel()
 	}
 
+	s.mu.RLock()
+	basectx := s.fetcherCtx
+	fetcher := s.fetcher
+	cache := s.cache
+	channels := s.channels
+	s.mu.RUnlock()
+
+	if fetcher == nil || basectx == nil {
+		s.refreshMu.Unlock()
+		return
+	}
+
+	ctx, cancel := context.WithCancel(basectx)
+	s.refreshCancel = cancel
+	s.refreshMu.Unlock()
+	defer func() {
+		cancel()
+		s.refreshMu.Lock()
+		s.refreshCancel = nil
+		s.refreshMu.Unlock()
+	}()
+
+	meta, err := fetcher.FetchMetadata(ctx)
+	if err != nil {
+		if ctx.Err() != nil {
+			s.addLog("Refresh cancelled")
+			return
+		}
+		s.addLog(fmt.Sprintf("Error: %v", err))
+		return
+	}
+
+	s.mu.Lock()
+	s.channels = meta.Channels
+	s.mu.Unlock()
+
+	if cache != nil {
+		_ = cache.PutMetadata(meta)
+	}
+	s.broadcast("event: update\ndata: \"channels\"\n\n")
+
+	channels = meta.Channels
+	if channelNum < 1 || channelNum > len(channels) {
+		s.addLog(fmt.Sprintf("Warning: channel %d is not available", channelNum))
+		return
+	}
+
+	ch := channels[channelNum-1]
+	blockCount := int(ch.Blocks)
+	if blockCount <= 0 {
+		s.mu.Lock()
+		s.messages[channelNum] = nil
+		s.mu.Unlock()
+		s.addLog(fmt.Sprintf("Updated %s: 0 messages", ch.Name))
+		s.broadcast("event: update\ndata: \"messages\"\n\n")
+		return
+	}
+
+	msgs, err := fetcher.FetchChannel(ctx, channelNum, blockCount)
+	if err != nil {
+		if ctx.Err() != nil {
+			s.addLog("Refresh cancelled")
+			return
+		}
+		s.addLog(fmt.Sprintf("Channel %s error: %v", ch.Name, err))
+		return
+	}
+
+	s.mu.Lock()
+	s.messages[channelNum] = msgs
+	s.mu.Unlock()
+
+	if cache != nil {
+		_ = cache.PutMessages(channelNum, msgs)
+	}
+
+	s.addLog(fmt.Sprintf("Updated %s: %d messages", ch.Name, len(msgs)))
 	s.broadcast("event: update\ndata: \"messages\"\n\n")
 }
 

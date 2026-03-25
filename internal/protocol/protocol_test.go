@@ -57,19 +57,19 @@ func TestSerializeParseMessages(t *testing.T) {
 }
 
 func TestSplitIntoBlocks(t *testing.T) {
-	data := bytes.Repeat([]byte("A"), DefaultBlockPayload*3+50)
+	// MaxBlockPayload*3+50 guarantees at least 4 blocks (ceil((MaxBlockPayload*3+50)/MaxBlockPayload) = 4).
+	data := bytes.Repeat([]byte("A"), MaxBlockPayload*3+50)
 	blocks := SplitIntoBlocks(data)
-	if len(blocks) != 4 {
-		t.Fatalf("blocks: got %d, want 4", len(blocks))
+	if len(blocks) < 4 {
+		t.Fatalf("expected at least 4 blocks for %d bytes, got %d", len(data), len(blocks))
 	}
-	for i, b := range blocks {
-		if i < 3 && len(b) != DefaultBlockPayload {
-			t.Errorf("block %d: size %d, want %d", i, len(b), DefaultBlockPayload)
+	// Every non-last block must be within [MinBlockPayload, MaxBlockPayload].
+	for i, b := range blocks[:len(blocks)-1] {
+		if len(b) < MinBlockPayload || len(b) > MaxBlockPayload {
+			t.Errorf("block %d: size %d, want [%d, %d]", i, len(b), MinBlockPayload, MaxBlockPayload)
 		}
 	}
-	if len(blocks[3]) != 50 {
-		t.Errorf("last block: size %d, want 50", len(blocks[3]))
-	}
+	// Reassembled data must equal original.
 	var reassembled []byte
 	for _, b := range blocks {
 		reassembled = append(reassembled, b...)

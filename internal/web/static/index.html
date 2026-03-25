@@ -142,6 +142,44 @@
             word-break: break-word;
         }
 
+        .progress-panel {
+            height: 56px;
+            min-height: 56px;
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            overflow-y: auto;
+            font-size: 12px;
+            font-family: 'Vazirmatn', monospace;
+            padding: 12px 12px;
+            direction: ltr;
+            text-align: left;
+            color: var(--text-dim);
+        }
+        .progress-item {
+            margin-bottom: 8px;
+            padding: 6px;
+            border-radius: 4px;
+            background: var(--bg);
+        }
+        .progress-label {
+            font-size: 11px;
+            margin-bottom: 3px;
+            color: var(--text-dim);
+        }
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: var(--border);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: var(--accent);
+            transition: width 0.2s;
+        }
+
         .log-panel {
             height: 150px;
             min-height: 100px;
@@ -149,13 +187,21 @@
             border-top: 1px solid var(--border);
             overflow-y: auto;
             font-size: 12px;
-            font-family: 'Vazirmatn', monospace;
+            font-family: monospace;
             padding: 8px 12px;
             direction: ltr;
             text-align: left;
             color: var(--text-dim);
         }
-        .log-line { padding: 2px 0; }
+        .log-line {
+            padding: 2px 0;
+            line-height: 1.3;
+        }
+        .log-line.info { color: #60a5fa; }
+        .log-line.progress { color: #fbbf24; }
+        .log-line.error { color: #ef4444; }
+        .log-line.success { color: #22c55e; }
+        .log-line.warning { color: #f97316; }
 
         .modal-overlay {
             display: none;
@@ -245,6 +291,7 @@
                     <button class="btn btn-primary" onclick="openSettings()">Configure</button>
                 </div>
             </div>
+            <div class="progress-panel" id="progressPanel"></div>
             <div class="log-panel" id="logPanel"></div>
         </div>
     </div>
@@ -268,12 +315,17 @@
                 <label>Query Mode</label>
                 <select id="cfgQueryMode">
                     <option value="single">Single label (base32, stealthier)</option>
-                    <option value="double">Double label (hex)</option>
+                    <option value="double">Multi-label (hex)</option>
+                    <option value="plain">Plain text (no query encryption)</option>
                 </select>
             </div>
             <div class="form-group">
                 <label>Rate Limit (queries/sec, 0 = unlimited)</label>
-                <input type="number" id="cfgRateLimit" value="0" min="0" step="0.1">
+                <input type="number" id="cfgRateLimit" value="100" min="0" step="0.1">
+            </div>
+            <div class="form-group" style="flex-direction:row;align-items:center;gap:10px;">
+                <input type="checkbox" id="cfgDebug" style="width:auto;margin:0;">
+                <label for="cfgDebug" style="margin:0;cursor:pointer;">Debug mode (log generated query names)</label>
             </div>
             <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:20px;">
                 <button class="btn" onclick="closeSettings()">Cancel</button>
@@ -287,6 +339,7 @@
         let selectedChannel = 0;
         let channels = [];
         let eventSource = null;
+        let autoRefreshTimer = null;
 
         async function init() {
             try {
@@ -296,11 +349,16 @@
                     openSettings();
                 } else {
                     document.getElementById('statusDot').className = 'status-dot connected';
-                    if (status.channels && status.channels.length > 0) {
-                        channels = status.channels;
-                        renderChannels();
-                        selectChannel(1);
+                    await doRefresh();
+                    await loadChannels();
+                    if (channels && channels.length > 0) {
+                        await selectChannel(1);
                     }
+                    autoRefreshTimer = setInterval(function() {
+                        if (selectedChannel > 0) {
+                            doRefresh();
+                        }
+                    }, 120000);
                 }
             } catch (e) {}
             connectSSE();
@@ -312,12 +370,23 @@
             eventSource.addEventListener('log', function(e) {
                 addLogLine(JSON.parse(e.data));
             });
-            eventSource.addEventListener('update', function(e) {
-                loadChannels();
-                if (selectedChannel > 0) loadMessages(selectedChannel);
+            eventSource.addEventListener('update', async function(e) {
+                var wasEmpty = channels.length === 0;
+                await loadChannels();
+                if (wasEmpty && channels.length > 0 && selectedChannel === 0) {
+                    // Channels just appeared for the first time — auto-select the first one.
+                    selectChannel(1);
+                } else if (selectedChannel > 0) {
+                    loadMessages(selectedChannel);
+                }
             });
             eventSource.onerror = function() {
                 document.getElementById('statusDot').className = 'status-dot disconnected';
+                // EventSource.CLOSED (2) means the browser stopped retrying — reconnect manually.
+                if (eventSource.readyState === EventSource.CLOSED) {
+                    eventSource.close();
+                    setTimeout(connectSSE, 3000);
+                }
             };
             eventSource.onopen = function() {
                 document.getElementById('statusDot').className = 'status-dot connected';
@@ -343,6 +412,7 @@
         async function selectChannel(num) {
             selectedChannel = num;
             renderChannels();
+            await doRefresh();
             await loadMessages(num);
         }
 
@@ -392,16 +462,79 @@
             var el = document.getElementById('logPanel');
             var div = document.createElement('div');
             div.className = 'log-line';
+
+            // Parse log level from line content
+            var level = 'info';
+            var displayText = line;
+            
+            if (typeof line === 'string') {
+                if (line.includes('Error:') || line.includes('error') || line.includes('Error')) {
+                    level = 'error';
+                } else if (line.includes('Warning:') || line.includes('warning') || line.includes('Warning')) {
+                    level = 'warning';
+                } else if (line.includes('OK:') || line.includes('OK') || line.includes('success') || line.includes('done')) {
+                    level = 'success';
+                } else if (line.match(/\[\d+%\]|\d+\s*%/)) {
+                    level = 'progress';
+                    updateProgressDisplay(line);
+                    return;
+                }
+            }
+            
+            div.className = 'log-line ' + level;
             div.textContent = line;
             el.appendChild(div);
             el.scrollTop = el.scrollHeight;
+            
+            // Keep only last 200 lines
             while (el.children.length > 200) {
                 el.removeChild(el.firstChild);
             }
         }
 
+        function updateProgressDisplay(line) {
+            // Parse progress from "Channel N [====>    ] 45%"
+            var match = line.match(/Channel\s+(\d+)/);
+            if (!match) return;
+            
+            var channelNum = match[1];
+            var percentMatch = line.match(/(\d+)%/);
+            var percent = percentMatch ? parseInt(percentMatch[1]) : 0;
+            
+            var panel = document.getElementById('progressPanel');
+            var itemId = 'progress-current';
+            var item = document.getElementById(itemId);
+            
+            if (!item) {
+                item = document.createElement('div');
+                item.id = itemId;
+                item.className = 'progress-item';
+                item.innerHTML = '<div class="progress-label">Channel ' + channelNum + '</div>' +
+                    '<div class="progress-bar"><div class="progress-fill" style="width:0%"></div></div>';
+                panel.appendChild(item);
+            } else {
+                item.querySelector('.progress-label').textContent = 'Channel ' + channelNum;
+            }
+            
+            var fill = item.querySelector('.progress-fill');
+            fill.style.width = percent + '%';
+            
+            // Remove if complete
+            if (percent >= 100) {
+                setTimeout(function() {
+                    if (item.parentNode) item.parentNode.removeChild(item);
+                }, 1000);
+            }
+        }
+
         async function doRefresh() {
-            try { await fetch('/api/refresh', {method: 'POST'}); } catch (e) {}
+            try {
+                var url = '/api/refresh';
+                if (selectedChannel > 0) {
+                    url += '?channel=' + selectedChannel;
+                }
+                await fetch(url, {method: 'POST'});
+            } catch (e) {}
         }
 
         function openSettings() {
@@ -411,7 +544,12 @@
                 if (cfg.key) document.getElementById('cfgKey').value = cfg.key;
                 if (cfg.resolvers) document.getElementById('cfgResolvers').value = cfg.resolvers.join('\n');
                 if (cfg.queryMode) document.getElementById('cfgQueryMode').value = cfg.queryMode;
-                if (cfg.rateLimit) document.getElementById('cfgRateLimit').value = cfg.rateLimit;
+                if (typeof cfg.rateLimit === 'number') {
+                    document.getElementById('cfgRateLimit').value = cfg.rateLimit;
+                } else {
+                    document.getElementById('cfgRateLimit').value = 100;
+                }
+                document.getElementById('cfgDebug').checked = !!cfg.debug;
             }).catch(function() {});
         }
 
@@ -432,7 +570,8 @@
                 key: document.getElementById('cfgKey').value,
                 resolvers: resolvers,
                 queryMode: document.getElementById('cfgQueryMode').value,
-                rateLimit: parseFloat(document.getElementById('cfgRateLimit').value) || 0
+                rateLimit: parseFloat(document.getElementById('cfgRateLimit').value) || 100,
+                debug: document.getElementById('cfgDebug').checked
             };
 
             if (!cfg.domain || !cfg.key || resolvers.length === 0) {
@@ -453,9 +592,18 @@
                 }
                 closeSettings();
                 document.getElementById('statusDot').className = 'status-dot connected';
-                setTimeout(function() {
-                    loadChannels();
-                }, 2000);
+                await doRefresh();
+                await loadChannels();
+                if (channels && channels.length > 0) {
+                    await selectChannel(1);
+                }
+                if (!autoRefreshTimer) {
+                    autoRefreshTimer = setInterval(function() {
+                        if (selectedChannel > 0) {
+                            fetch('/api/refresh?channel=' + selectedChannel + '&quiet=1', {method: 'POST'});
+                        }
+                    }, 120000);
+                }
             } catch (e) {
                 errEl.textContent = e.message;
                 errEl.style.display = 'block';

@@ -71,7 +71,9 @@ func TestFeedGetBlockUnknownChannel(t *testing.T) {
 
 func TestFeedLargeMessages(t *testing.T) {
 	feed := NewFeed([]string{"Test"})
-	largeText := make([]byte, 500)
+	// Use text large enough to span 2 blocks at DefaultBlockPayload (currently 700 bytes).
+	// Message serialization overhead is 10 bytes, so we need >690 bytes of text.
+	largeText := make([]byte, 750)
 	for i := range largeText {
 		largeText[i] = 65
 	}

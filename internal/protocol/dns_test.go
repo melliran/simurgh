@@ -1,6 +1,7 @@
 package protocol
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -43,21 +44,26 @@ func TestEncodeDecodeQuerySingleLabel(t *testing.T) {
 	}
 }
 
-func TestEncodeDecodeQueryDoubleLabel(t *testing.T) {
+func TestEncodeDecodeQueryMultiLabel(t *testing.T) {
 	qk, _, err := DeriveKeys("test-key")
 	if err != nil {
 		t.Fatalf("DeriveKeys: %v", err)
 	}
 	domain := "t.example.com"
-	qname, err := EncodeQuery(qk, 3, 7, domain, QueryDoubleLabel)
+	qname, err := EncodeQuery(qk, 3, 7, domain, QueryMultiLabel)
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Double label: two hex labels before domain
+	// Multi-label mode splits hex across labels; all must be DNS-safe.
 	subdomain := qname[:len(qname)-len(domain)-1]
 	parts := strings.Split(subdomain, ".")
-	if len(parts) != 2 {
-		t.Errorf("double-label query should have 2 parts, got %d: %q", len(parts), subdomain)
+	if len(parts) < 1 {
+		t.Errorf("multi-label query should have at least 1 part, got %d: %q", len(parts), subdomain)
+	}
+	for _, p := range parts {
+		if len(p) == 0 || len(p) > 63 {
+			t.Errorf("invalid label length %d in %q", len(p), p)
+		}
 	}
 	ch, blk, err := DecodeQuery(qk, qname, domain)
 	if err != nil {
@@ -65,6 +71,73 @@ func TestEncodeDecodeQueryDoubleLabel(t *testing.T) {
 	}
 	if ch != 3 || blk != 7 {
 		t.Errorf("got ch=%d blk=%d, want ch=3 blk=7", ch, blk)
+	}
+}
+
+func TestEncodeQueryTooLongDomain(t *testing.T) {
+	qk, _, err := DeriveKeys("test-key")
+	if err != nil {
+		t.Fatalf("DeriveKeys: %v", err)
+	}
+
+	// 250-char domain should make qname exceed DNS 253-char limit.
+	longDomain := strings.Repeat("a", 250)
+	_, err = EncodeQuery(qk, 1, 1, longDomain, QueryMultiLabel)
+	if err == nil {
+		t.Fatal("expected error for too-long domain")
+	}
+}
+
+func TestEncodeDecodeQueryPlainLabel(t *testing.T) {
+	qk, _, err := DeriveKeys("test-key")
+	if err != nil {
+		t.Fatalf("DeriveKeys: %v", err)
+	}
+	domain := "t.example.com"
+	tests := []struct {
+		channel uint16
+		block   uint16
+	}{
+		{0, 0},
+		{1, 42},
+		{255, 65535},
+		{3, 100},
+	}
+	for _, tt := range tests {
+		qname, err := EncodeQuery(qk, tt.channel, tt.block, domain, QueryPlainLabel)
+		if err != nil {
+			t.Fatalf("EncodeQuery(%d, %d): %v", tt.channel, tt.block, err)
+		}
+		// Label should be "c<channel>b<block>" — human readable, no padding hex.
+		want := fmt.Sprintf("c%db%d.%s", tt.channel, tt.block, domain)
+		if qname != want {
+			t.Errorf("got %q, want %q", qname, want)
+		}
+		// DecodeQuery must recover channel and block regardless of key.
+		ch, blk, err := DecodeQuery(qk, qname, domain)
+		if err != nil {
+			t.Fatalf("DecodeQuery: %v", err)
+		}
+		if ch != tt.channel || blk != tt.block {
+			t.Errorf("got ch=%d blk=%d, want ch=%d blk=%d", ch, blk, tt.channel, tt.block)
+		}
+	}
+}
+
+func TestPlainLabelNotConfusedWithEncrypted(t *testing.T) {
+	qk, _, err := DeriveKeys("test-key")
+	if err != nil {
+		t.Fatalf("DeriveKeys: %v", err)
+	}
+	domain := "t.example.com"
+	// Encode with single-label then check that DecodeQuery does NOT treat it as plain.
+	qname, _ := EncodeQuery(qk, 5, 10, domain, QuerySingleLabel)
+	ch, blk, err := DecodeQuery(qk, qname, domain)
+	if err != nil {
+		t.Fatalf("DecodeQuery single-label: %v", err)
+	}
+	if ch != 5 || blk != 10 {
+		t.Errorf("got ch=%d blk=%d, want ch=5 blk=10", ch, blk)
 	}
 }
 

@@ -1,181 +1,129 @@
 package client
 
 import (
-	"bufio"
+	"context"
 	"fmt"
-	"log"
-	"net"
-	"os"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
+
+	"github.com/miekg/dns"
+
+	"github.com/sartoopjj/thefeed/internal/protocol"
 )
 
-// ResolverScanner scans CIDR ranges to find working DNS resolvers.
-type ResolverScanner struct {
-	fetcher     *Fetcher
-	concurrency int
-	timeout     time.Duration
+// ResolverChecker periodically probes the fetcher's configured resolvers and
+// updates the active (healthy) resolver pool. It replaces the old file/CIDR
+// scanner — no file I/O; just a plain DNS probe on channel 0.
+type ResolverChecker struct {
+	fetcher *Fetcher
+	timeout time.Duration
+	logFunc LogFunc
 }
 
-// NewResolverScanner creates a resolver scanner.
-func NewResolverScanner(fetcher *Fetcher, concurrency int) *ResolverScanner {
-	if concurrency <= 0 {
-		concurrency = 50
+// NewResolverChecker creates a health checker for the resolvers in fetcher.
+// timeout is the per-probe deadline; 0 uses a 5-second default.
+func NewResolverChecker(fetcher *Fetcher, timeout time.Duration) *ResolverChecker {
+	if timeout <= 0 {
+		timeout = 5 * time.Second
 	}
-	return &ResolverScanner{
-		fetcher:     fetcher,
-		concurrency: concurrency,
-		timeout:     3 * time.Second,
+	return &ResolverChecker{
+		fetcher: fetcher,
+		timeout: timeout,
 	}
 }
 
-// ScanCIDR scans a CIDR range for working DNS resolvers.
-func (rs *ResolverScanner) ScanCIDR(cidr string, onFound func(ip string)) error {
-	_, ipNet, err := net.ParseCIDR(cidr)
-	if err != nil {
-		return fmt.Errorf("parse CIDR %q: %w", cidr, err)
-	}
-
-	ips := expandCIDR(ipNet)
-	return rs.scanIPs(ips, onFound)
+// SetLogFunc sets the callback used to emit health-check results to the log panel.
+func (rc *ResolverChecker) SetLogFunc(fn LogFunc) {
+	rc.logFunc = fn
 }
 
-// ScanFile scans resolver IPs from a file (one per line, supports CIDR notation).
-func (rs *ResolverScanner) ScanFile(path string, onFound func(ip string)) error {
-	f, err := os.Open(path)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	var ips []string
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-		if strings.Contains(line, "/") {
-			_, ipNet, err := net.ParseCIDR(line)
-			if err != nil {
-				log.Printf("[resolver] skip invalid CIDR: %s", line)
-				continue
+// Start begins the periodic health-check loop in the background.
+// An initial check runs immediately; subsequent checks happen every 10 minutes.
+// ctx controls the lifetime — cancel it to stop the checker.
+func (rc *ResolverChecker) Start(ctx context.Context) {
+	go func() {
+		rc.runCheck()
+		ticker := time.NewTicker(10 * time.Minute)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				rc.runCheck()
 			}
-			ips = append(ips, expandCIDR(ipNet)...)
-		} else {
-			ips = append(ips, line)
 		}
-	}
-	if err := scanner.Err(); err != nil {
-		return err
-	}
-
-	return rs.scanIPs(ips, onFound)
+	}()
 }
 
-// CheckResolver tests if a single resolver works by querying metadata.
-func (rs *ResolverScanner) CheckResolver(ip string) bool {
-	if !strings.Contains(ip, ":") {
-		ip = ip + ":53"
+func (rc *ResolverChecker) runCheck() {
+	resolvers := rc.fetcher.AllResolvers()
+	if len(resolvers) == 0 {
+		return
 	}
 
-	// Create a new fetcher with only this resolver to avoid copying the lock.
-	tmpFetcher := &Fetcher{
-		domain:      rs.fetcher.domain,
-		queryKey:    rs.fetcher.queryKey,
-		responseKey: rs.fetcher.responseKey,
-		resolvers:   []string{ip},
-		timeout:     rs.timeout,
-	}
+	rc.log("Checking %d resolver(s)...", len(resolvers))
 
-	_, err := tmpFetcher.FetchBlock(0, 0)
-	return err == nil
-}
-
-func (rs *ResolverScanner) scanIPs(ips []string, onFound func(ip string)) error {
-	if len(ips) == 0 {
-		return fmt.Errorf("no IPs to scan")
-	}
-
-	var found atomic.Int32
-	sem := make(chan struct{}, rs.concurrency)
+	var healthy []string
+	var mu sync.Mutex
 	var wg sync.WaitGroup
+	sem := make(chan struct{}, 10) // probe up to 10 resolvers concurrently
 
-	for _, ip := range ips {
+	for _, r := range resolvers {
 		wg.Add(1)
-		go func(ip string) {
+		go func(r string) {
 			defer wg.Done()
 			sem <- struct{}{}
 			defer func() { <-sem }()
 
-			if rs.CheckResolver(ip) {
-				found.Add(1)
-				if onFound != nil {
-					onFound(ip)
-				}
+			if rc.checkOne(r) {
+				mu.Lock()
+				healthy = append(healthy, r)
+				mu.Unlock()
+				rc.log("Resolver OK: %s", r)
+			} else {
+				rc.log("Resolver failed: %s", r)
 			}
-		}(ip)
+		}(r)
 	}
-
 	wg.Wait()
 
-	if found.Load() == 0 {
-		return fmt.Errorf("no working resolvers found among %d IPs", len(ips))
-	}
-	return nil
+	rc.fetcher.SetActiveResolvers(healthy)
+	rc.log("Resolver check done: %d/%d healthy", len(healthy), len(resolvers))
 }
 
-// LoadResolversFile loads resolver IPs from a file (one per line).
-func LoadResolversFile(path string) ([]string, error) {
-	f, err := os.Open(path)
+// checkOne probes a single resolver by sending a metadata channel query
+// (channel 0, block 0). A successful DNS response (any rcode that isn't a
+// network/timeout error) means the resolver is reachable and understands the domain.
+func (rc *ResolverChecker) checkOne(resolver string) bool {
+	if !strings.Contains(resolver, ":") {
+		resolver += ":53"
+	}
+
+	qname, err := protocol.EncodeQuery(
+		rc.fetcher.queryKey,
+		protocol.MetadataChannel, 0,
+		rc.fetcher.domain,
+		rc.fetcher.queryMode,
+	)
 	if err != nil {
-		return nil, err
+		return false
 	}
-	defer f.Close()
 
-	var resolvers []string
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-		resolvers = append(resolvers, line)
-	}
-	return resolvers, scanner.Err()
+	c := &dns.Client{Timeout: rc.timeout}
+	m := new(dns.Msg)
+	m.SetQuestion(dns.Fqdn(qname), dns.TypeTXT)
+	m.RecursionDesired = true
+
+	resp, _, err := c.Exchange(m, resolver)
+	// We consider the resolver healthy if we get any DNS response back
+	// (even NXDOMAIN means the resolver forwarded the query to our server).
+	return err == nil && resp != nil
 }
 
-func expandCIDR(ipNet *net.IPNet) []string {
-	var ips []string
-	ip := ipNet.IP.Mask(ipNet.Mask)
-
-	for ip := cloneIP(ip); ipNet.Contains(ip); incIP(ip) {
-		// Skip network and broadcast addresses for /24 and smaller
-		ones, bits := ipNet.Mask.Size()
-		if bits-ones <= 8 {
-			last := ip[len(ip)-1]
-			if last == 0 || last == 255 {
-				continue
-			}
-		}
-		ips = append(ips, ip.String())
-	}
-	return ips
-}
-
-func cloneIP(ip net.IP) net.IP {
-	dup := make(net.IP, len(ip))
-	copy(dup, ip)
-	return dup
-}
-
-func incIP(ip net.IP) {
-	for j := len(ip) - 1; j >= 0; j-- {
-		ip[j]++
-		if ip[j] > 0 {
-			break
-		}
+func (rc *ResolverChecker) log(format string, args ...any) {
+	if rc.logFunc != nil {
+		rc.logFunc(fmt.Sprintf(format, args...))
 	}
 }
