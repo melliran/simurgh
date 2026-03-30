@@ -443,6 +443,31 @@ install_thefeed() {
                 echo "THEFEED_NO_TELEGRAM=1" >> "$DATA_DIR/thefeed.env"
             fi
         fi
+
+        # Ask about remote management
+        local current_manage="disabled"
+        if [[ "${THEFEED_ALLOW_MANAGE:-}" == "1" ]]; then
+            current_manage="enabled"
+        fi
+        echo -e "Remote management: ${yellow}${current_manage}${plain}"
+        read -rp "Change remote management? [y/N]: " change_manage
+        if [[ "$change_manage" == "y" || "$change_manage" == "Y" ]]; then
+            if [[ "${THEFEED_ALLOW_MANAGE:-}" == "1" ]]; then
+                echo -e "${yellow}Disabling remote management...${plain}"
+                sed -i "s/^THEFEED_ALLOW_MANAGE=.*/THEFEED_ALLOW_MANAGE=0/" "$DATA_DIR/thefeed.env"
+            else
+                echo -e "${yellow}Enabling remote management...${plain}"
+                if grep -q "^THEFEED_ALLOW_MANAGE=" "$DATA_DIR/thefeed.env"; then
+                    sed -i "s/^THEFEED_ALLOW_MANAGE=.*/THEFEED_ALLOW_MANAGE=1/" "$DATA_DIR/thefeed.env"
+                else
+                    echo "THEFEED_ALLOW_MANAGE=1" >> "$DATA_DIR/thefeed.env"
+                fi
+            fi
+            set -a
+            source "$DATA_DIR/thefeed.env"
+            set +a
+        fi
+
         install_service
         start_service
     fi
