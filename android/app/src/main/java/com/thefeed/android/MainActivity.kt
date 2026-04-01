@@ -127,8 +127,8 @@ class MainActivity : ComponentActivity() {
     }
 
     companion object {
-        private const val MAX_RETRIES = 15
+        private const val MAX_RETRIES = 25
         private const val RETRY_DELAY_MS = 2000L
-        private const val INITIAL_DELAY_MS = 1500L
+        private const val INITIAL_DELAY_MS = 5000L
     }
 }

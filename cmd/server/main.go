@@ -64,6 +64,13 @@ func main() {
 	if !*allowManage && os.Getenv("THEFEED_ALLOW_MANAGE") == "1" {
 		*allowManage = true
 	}
+	if *msgLimit == 15 {
+		if v := os.Getenv("THEFEED_MSG_LIMIT"); v != "" {
+			if n, err := strconv.Atoi(v); err == nil && n > 0 {
+				*msgLimit = n
+			}
+		}
+	}
 	if *apiID == "" {
 		*apiID = os.Getenv("TELEGRAM_API_ID")
 	}

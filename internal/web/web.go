@@ -588,7 +588,6 @@ func (s *Server) refreshChannel(channelNum int) {
 	s.refreshMu.Lock()
 	if s.channelFetching[channelNum] {
 		s.refreshMu.Unlock()
-		s.addLog(fmt.Sprintf("Channel %d is already being fetched, skipping", channelNum))
 		return
 	}
 	if s.refreshCancel != nil {

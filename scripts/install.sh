@@ -142,6 +142,10 @@ setup_config() {
             echo -e "${red}Passphrase cannot be empty${plain}"
         done
 
+        local msg_limit=""
+        read -rp "Max messages per channel [15]: " msg_limit
+        msg_limit="${msg_limit:-15}"
+
         echo ""
         echo -e "${yellow}Allow remote management (send messages, add/remove channels)?${plain}"
         echo -e "  If enabled, anyone with the passphrase can manage channels."
@@ -176,6 +180,7 @@ setup_config() {
 THEFEED_DOMAIN=${domain}
 THEFEED_KEY=${passkey}
 THEFEED_ALLOW_MANAGE=$([ "$allow_manage" = "y" ] || [ "$allow_manage" = "Y" ] && echo "1" || echo "0")
+THEFEED_MSG_LIMIT=${msg_limit}
 TELEGRAM_API_ID=${api_id}
 TELEGRAM_API_HASH=${api_hash}
 TELEGRAM_PHONE=${phone}
@@ -215,6 +220,7 @@ ENVEOF
 THEFEED_DOMAIN=${domain}
 THEFEED_KEY=${passkey}
 THEFEED_ALLOW_MANAGE=$([ "$allow_manage" = "y" ] || [ "$allow_manage" = "Y" ] && echo "1" || echo "0")
+THEFEED_MSG_LIMIT=${msg_limit}
 TELEGRAM_API_ID=${api_id}
 TELEGRAM_API_HASH=${api_hash}
 TELEGRAM_PHONE=${phone}
@@ -292,7 +298,8 @@ ExecStart=${INSTALL_DIR}/thefeed-server \\
     --api-id \${TELEGRAM_API_ID} \\
     --api-hash \${TELEGRAM_API_HASH} \\
     --phone \${TELEGRAM_PHONE} \\
-    --listen \${THEFEED_LISTEN} ${extra_flags}
+    --listen \${THEFEED_LISTEN} \\
+    --msg-limit \${THEFEED_MSG_LIMIT} ${extra_flags}
 
 Restart=on-failure
 RestartSec=10

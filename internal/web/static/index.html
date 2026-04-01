@@ -272,11 +272,29 @@
         }
         .progress-fill.send { background: var(--send-color); }
 
+        .log-panel-wrapper {
+            border-top: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+        }
+        .log-panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 4px 12px;
+            background: rgba(14, 20, 38, 0.98);
+            cursor: pointer;
+            user-select: none;
+            font-size: 11px;
+            color: var(--text-dim);
+            letter-spacing: 0.5px;
+        }
+        .log-panel-header:hover { color: var(--text); }
+        .log-toggle-icon { font-size: 10px; }
         .log-panel {
             height: 150px;
             min-height: 100px;
             background: rgba(14, 20, 38, 0.95);
-            border-top: 1px solid var(--border);
             overflow-y: auto;
             font-size: 12px;
             font-family: monospace;
@@ -285,6 +303,7 @@
             text-align: left;
             color: var(--text-dim);
         }
+        .log-panel.hidden { display: none; }
         .log-line {
             padding: 2px 0;
             line-height: 1.3;
@@ -517,7 +536,13 @@
                 <button class="send-btn" onclick="sendMessage()">Send</button>
             </div>
             <div class="progress-panel" id="progressPanel"></div>
-            <div class="log-panel" id="logPanel"></div>
+            <div class="log-panel-wrapper">
+                <div class="log-panel-header" onclick="toggleLog()">
+                    <span>LOG</span>
+                    <span class="log-toggle-icon" id="logToggleIcon">▼</span>
+                </div>
+                <div class="log-panel" id="logPanel"></div>
+            </div>
         </div>
     </div>
     <div class="sidebar-overlay" onclick="toggleSidebar(true)"></div>
@@ -595,6 +620,7 @@
         var eventSource = null;
         var autoRefreshTimer = null;
         var telegramLoggedIn = false;
+        var logVisible = true;
 
         var serverNextFetch = 0;
         var nextFetchInterval = null;
@@ -1157,6 +1183,19 @@
             } catch (e) {
                 errEl.textContent = e.message;
                 errEl.style.display = 'block';
+            }
+        }
+
+        function toggleLog() {
+            logVisible = !logVisible;
+            var panel = document.getElementById('logPanel');
+            var icon = document.getElementById('logToggleIcon');
+            if (logVisible) {
+                panel.classList.remove('hidden');
+                icon.textContent = '▼';
+            } else {
+                panel.classList.add('hidden');
+                icon.textContent = '▶';
             }
         }
 
