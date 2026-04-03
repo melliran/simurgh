@@ -2,8 +2,10 @@ package web
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/subtle"
 	"embed"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/fs"
@@ -34,8 +36,22 @@ type Config struct {
 	// Timeout is the per-query DNS timeout in seconds (0 = default 5 s).
 	// Also used as the resolver health-check probe timeout.
 	Timeout float64 `json:"timeout,omitempty"`
-	// Debug enables verbose query logging (shows generated DNS query names).
-	Debug bool `json:"debug,omitempty"`
+}
+
+// Profile wraps a Config with a user-chosen nickname and a unique ID.
+type Profile struct {
+	ID       string `json:"id"`
+	Nickname string `json:"nickname"`
+	Config   Config `json:"config"`
+}
+
+// ProfileList is the on-disk structure for profiles.json.
+type ProfileList struct {
+	Active   string    `json:"active"` // ID of active profile
+	Profiles []Profile `json:"profiles"`
+	// FontSize stores user's preferred font size (0 = default 14).
+	FontSize int  `json:"fontSize,omitempty"`
+	Debug    bool `json:"debug,omitempty"`
 }
 
 // Server is the web UI server for thefeed client.
@@ -54,6 +70,9 @@ type Server struct {
 	nextFetch        uint32
 	lastMsgIDs       map[int]uint32 // last seen message IDs per channel
 	lastHashes       map[int]uint32 // last seen content hashes per channel
+
+	// checker is the active resolver health-checker; set by initFetcher.
+	checker *client.ResolverChecker
 
 	// fetcherCtx/fetcherCancel control the lifetime of the active fetcher's
 	// background goroutines (rate limiter, noise, resolver checker).
@@ -119,6 +138,9 @@ func (s *Server) Run() error {
 	mux.HandleFunc("/api/send", s.handleSend)
 	mux.HandleFunc("/api/admin", s.handleAdmin)
 	mux.HandleFunc("/api/events", s.handleSSE)
+	mux.HandleFunc("/api/profiles", s.handleProfiles)
+	mux.HandleFunc("/api/profiles/switch", s.handleProfileSwitch)
+	mux.HandleFunc("/api/settings", s.handleSettings)
 	mux.HandleFunc("/", s.handleIndex)
 
 	addr := fmt.Sprintf("127.0.0.1:%d", s.port)
@@ -126,7 +148,7 @@ func (s *Server) Run() error {
 	fmt.Printf("\n  Open in browser: http://%s\n\n", addr)
 
 	if s.fetcher != nil {
-		go s.refreshMetadataOnly()
+		s.startCheckerThenRefresh()
 	}
 
 	var handler http.Handler = mux
@@ -220,7 +242,7 @@ func (s *Server) handleConfig(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, fmt.Sprintf("init fetcher: %v", err), 500)
 			return
 		}
-		go s.refreshMetadataOnly()
+		s.startCheckerThenRefresh()
 		writeJSON(w, map[string]any{"ok": true})
 
 	default:
@@ -489,7 +511,12 @@ func (s *Server) initFetcher() error {
 	if cfg.QueryMode == "double" {
 		fetcher.SetQueryMode(protocol.QueryMultiLabel)
 	}
-	fetcher.SetDebug(cfg.Debug)
+	// Use global debug preference from profiles.json.
+	var debug bool
+	if pl, err := s.loadProfiles(); err == nil {
+		debug = pl.Debug
+	}
+	fetcher.SetDebug(debug)
 	if cfg.RateLimit > 0 {
 		fetcher.SetRateLimit(cfg.RateLimit)
 	}
@@ -512,16 +539,33 @@ func (s *Server) initFetcher() error {
 	// Start rate limiter and noise goroutines.
 	fetcher.Start(ctx)
 
-	// Start periodic resolver health checks (runs first check in background immediately).
+	// Initialise resolver health-checker; start it (with initial scan → then refresh)
+	// via startCheckerThenRefresh, called by every initFetcher call site.
 	checker := client.NewResolverChecker(fetcher, timeout)
 	checker.SetLogFunc(func(msg string) {
 		s.addLog(msg)
 	})
-	checker.Start(ctx)
+	s.checker = checker
 
 	s.fetcher = fetcher
 	s.cache = cache
 	return nil
+}
+
+// startCheckerThenRefresh runs the resolver health-check pass synchronously
+// (in a new goroutine), then starts the periodic checker and fetches metadata.
+// This ensures fresh resolver data is used for the very first metadata query.
+func (s *Server) startCheckerThenRefresh() {
+	s.mu.RLock()
+	checker := s.checker
+	ctx := s.fetcherCtx
+	s.mu.RUnlock()
+	if checker == nil {
+		return
+	}
+	checker.StartAndNotify(ctx, func() {
+		s.refreshMetadataOnly()
+	})
 }
 
 func (s *Server) refreshMetadataOnly() {
@@ -659,7 +703,7 @@ func (s *Server) refreshChannel(channelNum int) {
 	s.mu.RUnlock()
 	if prevID > 0 && ch.LastMsgID == prevID && ch.ContentHash == prevHash {
 		s.addLog(fmt.Sprintf("Channel %s: no changes (last ID: %d)", ch.Name, prevID))
-		s.broadcast("event: update\ndata: \"messages\"\n\n")
+		s.broadcast(fmt.Sprintf("event: update\ndata: {\"type\":\"messages\",\"channel\":%d}\n\n", channelNum))
 		return
 	}
 
@@ -671,7 +715,7 @@ func (s *Server) refreshChannel(channelNum int) {
 		s.lastHashes[channelNum] = ch.ContentHash
 		s.mu.Unlock()
 		s.addLog(fmt.Sprintf("Updated %s: 0 messages", ch.Name))
-		s.broadcast("event: update\ndata: \"messages\"\n\n")
+		s.broadcast(fmt.Sprintf("event: update\ndata: {\"type\":\"messages\",\"channel\":%d}\n\n", channelNum))
 		return
 	}
 
@@ -697,7 +741,7 @@ func (s *Server) refreshChannel(channelNum int) {
 	}
 
 	s.addLog(fmt.Sprintf("Updated %s: %d messages", ch.Name, len(msgs)))
-	s.broadcast("event: update\ndata: \"messages\"\n\n")
+	s.broadcast(fmt.Sprintf("event: update\ndata: {\"type\":\"messages\",\"channel\":%d}\n\n", channelNum))
 }
 
 func (s *Server) loadConfig() (*Config, error) {
@@ -725,4 +769,257 @@ func (s *Server) saveConfig(cfg *Config) error {
 func writeJSON(w http.ResponseWriter, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(v)
+}
+
+func (s *Server) loadProfiles() (*ProfileList, error) {
+	path := filepath.Join(s.dataDir, "profiles.json")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	var pl ProfileList
+	if err := json.Unmarshal(data, &pl); err != nil {
+		return nil, err
+	}
+	return &pl, nil
+}
+
+func (s *Server) saveProfiles(pl *ProfileList) error {
+	path := filepath.Join(s.dataDir, "profiles.json")
+	data, err := json.MarshalIndent(pl, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, data, 0600)
+}
+
+func generateID() string {
+	b := make([]byte, 8)
+	rand.Read(b)
+	return hex.EncodeToString(b)
+}
+
+// handleProfiles manages CRUD for config profiles.
+// GET: returns profile list. POST: create/update/delete profiles.
+func (s *Server) handleProfiles(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		pl, err := s.loadProfiles()
+		if err != nil {
+			// Migrate existing config.json into a profile
+			pl = &ProfileList{}
+			if s.config != nil {
+				p := Profile{
+					ID:       generateID(),
+					Nickname: s.config.Domain,
+					Config:   *s.config,
+				}
+				pl.Profiles = []Profile{p}
+				pl.Active = p.ID
+				_ = s.saveProfiles(pl)
+			}
+		}
+		writeJSON(w, pl)
+
+	case http.MethodPost:
+		var req struct {
+			Action  string   `json:"action"` // "create", "update", "delete", "reorder"
+			Profile Profile  `json:"profile"`
+			Order   []string `json:"order"` // for reorder
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "invalid JSON", 400)
+			return
+		}
+		pl, _ := s.loadProfiles()
+		if pl == nil {
+			pl = &ProfileList{}
+		}
+
+		switch req.Action {
+		case "create":
+			req.Profile.ID = generateID()
+			if req.Profile.Nickname == "" {
+				req.Profile.Nickname = req.Profile.Config.Domain
+			}
+			pl.Profiles = append(pl.Profiles, req.Profile)
+			if len(pl.Profiles) == 1 {
+				pl.Active = req.Profile.ID
+			}
+
+		case "update":
+			for i, p := range pl.Profiles {
+				if p.ID == req.Profile.ID {
+					pl.Profiles[i] = req.Profile
+					break
+				}
+			}
+
+		case "delete":
+			for i, p := range pl.Profiles {
+				if p.ID == req.Profile.ID {
+					pl.Profiles = append(pl.Profiles[:i], pl.Profiles[i+1:]...)
+					if pl.Active == req.Profile.ID {
+						pl.Active = ""
+						if len(pl.Profiles) > 0 {
+							pl.Active = pl.Profiles[0].ID
+						}
+					}
+					break
+				}
+			}
+
+		case "reorder":
+			if len(req.Order) > 0 {
+				ordered := make([]Profile, 0, len(pl.Profiles))
+				byID := make(map[string]Profile)
+				for _, p := range pl.Profiles {
+					byID[p.ID] = p
+				}
+				for _, id := range req.Order {
+					if p, ok := byID[id]; ok {
+						ordered = append(ordered, p)
+					}
+				}
+				pl.Profiles = ordered
+			}
+
+		default:
+			http.Error(w, "unknown action", 400)
+			return
+		}
+
+		if err := s.saveProfiles(pl); err != nil {
+			http.Error(w, fmt.Sprintf("save profiles: %v", err), 500)
+			return
+		}
+
+		// If active profile changed, update config.json and re-init the fetcher.
+		if pl.Active != "" {
+			for _, p := range pl.Profiles {
+				if p.ID == pl.Active {
+					_ = s.saveConfig(&p.Config)
+					s.mu.Lock()
+					s.config = &p.Config
+					s.mu.Unlock()
+					if err := s.initFetcher(); err != nil {
+						log.Printf("[web] re-init fetcher after profile change: %v", err)
+					} else {
+						s.startCheckerThenRefresh()
+					}
+					break
+				}
+			}
+		}
+
+		writeJSON(w, map[string]any{"ok": true, "profiles": pl})
+
+	default:
+		http.Error(w, "method not allowed", 405)
+	}
+}
+
+// handleProfileSwitch switches the active profile and re-initializes the fetcher.
+func (s *Server) handleProfileSwitch(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	var req struct {
+		ID string `json:"id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid JSON", 400)
+		return
+	}
+	pl, err := s.loadProfiles()
+	if err != nil || pl == nil {
+		http.Error(w, "no profiles", 400)
+		return
+	}
+	var found *Profile
+	for i, p := range pl.Profiles {
+		if p.ID == req.ID {
+			found = &pl.Profiles[i]
+			break
+		}
+	}
+	if found == nil {
+		http.Error(w, "profile not found", 404)
+		return
+	}
+	pl.Active = found.ID
+	if err := s.saveProfiles(pl); err != nil {
+		http.Error(w, fmt.Sprintf("save: %v", err), 500)
+		return
+	}
+	if err := s.saveConfig(&found.Config); err != nil {
+		http.Error(w, fmt.Sprintf("save config: %v", err), 500)
+		return
+	}
+
+	// Reset state
+	s.mu.Lock()
+	s.config = &found.Config
+	s.channels = nil
+	s.messages = make(map[int][]protocol.Message)
+	s.lastMsgIDs = make(map[int]uint32)
+	s.lastHashes = make(map[int]uint32)
+	s.mu.Unlock()
+
+	if err := s.initFetcher(); err != nil {
+		http.Error(w, fmt.Sprintf("init fetcher: %v", err), 500)
+		return
+	}
+	s.startCheckerThenRefresh()
+	writeJSON(w, map[string]any{"ok": true})
+}
+
+// handleSettings manages user preferences (font size etc.).
+func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		pl, _ := s.loadProfiles()
+		if pl == nil {
+			pl = &ProfileList{}
+		}
+		writeJSON(w, map[string]any{"fontSize": pl.FontSize, "debug": pl.Debug})
+
+	case http.MethodPost:
+		var req struct {
+			FontSize int  `json:"fontSize"`
+			Debug    bool `json:"debug"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "invalid JSON", 400)
+			return
+		}
+		if req.FontSize < 10 {
+			req.FontSize = 0
+		}
+		if req.FontSize > 24 {
+			req.FontSize = 24
+		}
+		pl, _ := s.loadProfiles()
+		if pl == nil {
+			pl = &ProfileList{}
+		}
+		pl.FontSize = req.FontSize
+		pl.Debug = req.Debug
+		if err := s.saveProfiles(pl); err != nil {
+			http.Error(w, fmt.Sprintf("save: %v", err), 500)
+			return
+		}
+		// Apply debug to the current fetcher session immediately.
+		s.mu.RLock()
+		f := s.fetcher
+		s.mu.RUnlock()
+		if f != nil {
+			f.SetDebug(req.Debug)
+		}
+		writeJSON(w, map[string]any{"ok": true})
+
+	default:
+		http.Error(w, "method not allowed", 405)
+	}
 }

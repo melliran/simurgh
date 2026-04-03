@@ -1,1222 +1,950 @@
 <!DOCTYPE html>
-<html lang="fa">
+<html lang="fa" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>thefeed</title>
-    <style>
-        @font-face {
-            font-family: 'Vazirmatn';
-            src: url('/static/Vazirmatn-Regular.woff2') format('woff2');
-            font-weight: normal;
-            font-style: normal;
-            font-display: swap;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>thefeed</title>
+<style>
+@font-face{font-family:'Vazirmatn';src:url('/static/Vazirmatn-Regular.woff2') format('woff2');font-weight:normal;font-style:normal;font-display:swap}
+:root{
+  --bg:#17212b;--bg2:#0e1621;--sidebar-bg:#0e1621;--surface:#182533;--surface2:#1d2b3a;
+  --border:#1c2938;--accent:#3390ec;--accent-hover:#2b7dd6;--text:#f5f5f5;--text-dim:#8b9eb0;
+  --success:#4fae4e;--error:#e53935;--send-color:#3390ec;--msg-in:#182533;
+  --hover:#1e2c3a;--font-size:14px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Vazirmatn',system-ui,-apple-system,sans-serif;background:var(--bg2);color:var(--text);height:100vh;overflow:hidden;font-size:var(--font-size)}
+button{cursor:pointer;font-family:inherit}
+input,textarea,select{font-family:inherit}
 
-        :root {
-            --bg: #0b1020;
-            --bg2: #131a32;
-            --surface: rgba(18, 26, 48, 0.85);
-            --surface2: rgba(30, 42, 74, 0.9);
-            --border: #2d3d69;
-            --accent: #f59e0b;
-            --accent-dim: #d97706;
-            --text: #edf2ff;
-            --text-dim: #9aa8cf;
-            --success: #22c55e;
-            --error: #ef4444;
-            --send-color: #0ea5e9;
-        }
+/* ===== LAYOUT ===== */
+.app{display:flex;height:100vh;direction:ltr}
+.sidebar{width:280px;min-width:280px;background:var(--sidebar-bg);display:flex;flex-direction:column;border-right:1px solid var(--border);overflow:hidden}
+.chat-area{flex:1;display:flex;flex-direction:column;background:var(--bg);overflow:hidden}
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+/* ===== SIDEBAR HEADER ===== */
+.sidebar-header{padding:10px 12px;display:flex;flex-direction:column;gap:8px;border-bottom:1px solid var(--border)}
+.sidebar-header-top{display:flex;align-items:center;gap:8px;min-height:40px}
+.profile-btn{flex:1;display:flex;align-items:center;gap:8px;padding:7px 12px;border:none;border-radius:20px;background:var(--surface);color:var(--text);font-size:13px;font-weight:500;text-align:left;transition:background .15s;overflow:hidden}
+.profile-btn:hover{background:var(--hover)}
+.profile-btn-avatar{width:24px;height:24px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.profile-btn-name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.profile-btn-arrow{font-size:10px;color:var(--text-dim);flex-shrink:0}
+.sidebar-search{padding:7px 12px;border:none;border-radius:18px;background:var(--surface);color:var(--text);font-size:13px;outline:none;width:100%}
+.sidebar-search::placeholder{color:var(--text-dim)}
+.icon-btn{width:36px;height:36px;border:none;background:none;color:var(--text-dim);font-size:17px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.icon-btn:hover{background:var(--hover);color:var(--text)}
 
-        body {
-            font-family: 'Vazirmatn', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: radial-gradient(1200px 600px at 85% -10%, #213162 0%, transparent 55%), linear-gradient(165deg, var(--bg) 0%, var(--bg2) 100%);
-            color: var(--text);
-            height: 100vh;
-            overflow: hidden;
-        }
+/* ===== CHANNEL LIST ===== */
+.channel-list{flex:1;overflow-y:auto}
+.channel-section-title{padding:8px 14px 4px;font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px}
+.ch-item{display:flex;align-items:center;padding:10px 14px;cursor:pointer;transition:background .1s;gap:10px}
+.ch-item:hover{background:var(--hover)}
+.ch-item.active{background:var(--accent)}
+.ch-item.active .ch-name,.ch-item.active .ch-preview{color:#fff}
+.ch-avatar{width:44px;height:44px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:17px;color:var(--text-dim);flex-shrink:0;font-weight:600}
+.ch-item.active .ch-avatar{background:rgba(255,255,255,.2)}
+.ch-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.ch-name{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ch-preview{font-size:12px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ch-badge{background:#fff;color:var(--accent);font-size:10px;padding:1px 6px;border-radius:10px;min-width:18px;text-align:center;flex-shrink:0;font-weight:700}
+.ch-item.active .ch-badge{background:rgba(255,255,255,.3);color:#fff}
+.ch-type-tag{font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(192,132,252,.15);color:#c084fc;margin-left:4px}
 
-        .header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 10px 16px;
-            background: rgba(14, 20, 38, 0.92);
-            backdrop-filter: blur(8px);
-            border-bottom: 1px solid var(--border);
-            height: 58px;
-            position: relative;
-            z-index: 20;
-        }
-        .header-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
-        .header h1 { font-size: 17px; font-weight: 700; letter-spacing: 0.3px; }
-        .header-channel-name {
-            display: none;
-            font-size: 13px;
-            color: var(--text-dim);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 160px;
-        }
-        .header-actions { display: flex; gap: 8px; align-items: center; }
-        .next-fetch-timer { font-size: 11px; color: var(--text-dim); }
+/* ===== RTL MESSAGES ===== */
+.msg.rtl-msg{direction:rtl}
 
-        .mobile-menu-btn {
-            display: none;
-            width: 38px;
-            height: 38px;
-            border-radius: 10px;
-            border: 1px solid var(--border);
-            background: var(--surface2);
-            color: var(--text);
-            font-size: 18px;
-            cursor: pointer;
-        }
+/* ===== SIDEBAR FOOTER ===== */
+.sidebar-footer{padding:8px 14px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:center;gap:10px;font-size:10px;color:var(--text-dim)}
+.sidebar-footer a{color:var(--accent);text-decoration:none}
+.sidebar-footer a:hover{text-decoration:underline}
+.free-iran{color:var(--success);font-weight:700}
 
-        .status-dot {
-            width: 8px; height: 8px;
-            border-radius: 50%;
-            display: inline-block;
-        }
-        .status-dot.connected { background: var(--success); }
-        .status-dot.disconnected { background: var(--error); }
+/* ===== CHAT HEADER ===== */
+.chat-header{display:flex;align-items:center;padding:8px 14px;background:var(--surface);border-bottom:1px solid var(--border);min-height:54px;gap:10px}
+.back-btn{display:none;width:36px;height:36px;border:none;background:none;color:var(--text);font-size:20px;border-radius:50%;align-items:center;justify-content:center;flex-shrink:0}
+.back-btn:hover{background:var(--hover)}
+.chat-header-info{flex:1;min-width:0}
+.chat-header-name{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chat-header-sub{font-size:11px;color:var(--text-dim)}
+.chat-header-actions{display:flex;gap:4px;align-items:center}
+.next-fetch-label{font-size:10px;color:var(--text-dim);padding:0 2px}
+.next-fetch-info{font-size:11px;color:var(--text-dim);cursor:help;line-height:1}
 
-        .btn {
-            padding: 6px 14px;
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            background: var(--surface2);
-            color: var(--text);
-            cursor: pointer;
-            font-family: inherit;
-            font-size: 13px;
-            transition: background 0.15s, transform 0.12s;
-        }
-        .btn:hover { background: var(--border); }
-        .btn:active { transform: translateY(1px); }
-        .btn-primary { background: var(--accent); border-color: var(--accent); }
-        .btn-primary:hover { background: var(--accent-dim); }
+/* ===== MESSAGES ===== */
+.messages{flex:1;overflow-y:auto;padding:10px 14px;display:flex;flex-direction:column;gap:4px;direction:ltr}
+.msg-date-sep{text-align:center;padding:8px 0;font-size:12px;color:var(--text-dim)}
+.msg-date-sep span{background:rgba(0,0,0,.3);padding:3px 10px;border-radius:10px}
+.msg{max-width:min(82%,580px);padding:7px 10px 4px;border-radius:12px;line-height:1.7;word-break:break-word;white-space:pre-wrap;font-size:inherit;background:var(--msg-in);border:1px solid var(--border);align-self:flex-start;border-bottom-left-radius:4px}
+.msg-meta{display:flex;justify-content:flex-end;gap:6px;font-size:10px;color:var(--text-dim);margin-top:2px;direction:ltr}
+.media-tag{display:block;padding:2px 6px;border-radius:4px;background:rgba(51,144,236,.15);color:var(--accent);font-size:11px;margin-bottom:6px}
 
-        .main {
-            display: flex;
-            height: calc(100vh - 58px);
-        }
+/* ===== SEND PANEL ===== */
+.send-panel{display:none;padding:8px 14px;background:var(--surface);border-top:1px solid var(--border);gap:8px;align-items:flex-end}
+.send-panel.visible{display:flex}
+.send-input{flex:1;padding:8px 14px;border:none;border-radius:18px;background:var(--bg);color:var(--text);font-size:14px;outline:none;resize:none;max-height:120px;min-height:36px}
+.send-btn{width:40px;height:40px;border:none;border-radius:50%;background:var(--send-color);color:#fff;font-size:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.send-btn:hover{background:var(--accent-hover)}
 
-        .sidebar {
-            width: 260px;
-            min-width: 260px;
-            background: rgba(10, 16, 31, 0.82);
-            border-right: 1px solid var(--border);
-            display: flex;
-            flex-direction: column;
-            overflow-y: auto;
-        }
-        .sidebar-title {
-            padding: 12px 16px 8px;
-            font-size: 12px;
-            text-transform: uppercase;
-            color: var(--text-dim);
-            letter-spacing: 1px;
-        }
-        .channel-item {
-            padding: 12px 16px;
-            cursor: pointer;
-            border-left: 3px solid transparent;
-            transition: all 0.15s;
-            font-size: 14px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .channel-item:hover { background: var(--surface2); }
-        .channel-item.active {
-            background: var(--surface2);
-            border-left-color: var(--accent);
-            color: white;
-        }
-        .channel-type-badge {
-            font-size: 10px;
-            padding: 1px 5px;
-            border-radius: 3px;
-            background: var(--surface2);
-            color: var(--text-dim);
-            margin-left: 4px;
-        }
-        .channel-type-badge.private { background: #3b1f4e; color: #c084fc; }
-        .new-msg-badge {
-            background: var(--accent);
-            color: white;
-            font-size: 10px;
-            padding: 1px 6px;
-            border-radius: 10px;
-            min-width: 18px;
-            text-align: center;
-        }
+/* ===== PROGRESS ===== */
+.progress-panel{background:var(--surface);border-top:1px solid var(--border);overflow:hidden;font-size:12px;padding:0 14px;direction:ltr;text-align:left;color:var(--text-dim)}
+.progress-panel:empty{display:none}
+.progress-item{padding:5px 0;position:relative;padding-right:22px}
+.progress-close{position:absolute;right:0;top:4px;background:none;border:none;color:var(--text-dim);font-size:13px;cursor:pointer;line-height:1;padding:0 2px}
+.progress-close:hover{color:var(--text)}
+.progress-label{font-size:11px;margin-bottom:2px;color:var(--text-dim)}
+.progress-bar{width:100%;height:3px;background:var(--border);border-radius:2px;overflow:hidden}
+.progress-fill{height:100%;background:var(--accent);transition:width .2s}
+.msg-copy-btn{background:none;border:none;color:var(--text-dim);font-size:11px;cursor:pointer;padding:0 2px;opacity:0;transition:opacity .15s;line-height:1;flex-shrink:0}.msg:hover .msg-copy-btn{opacity:1}
 
-        .content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
+/* ===== LOG ===== */
+.log-toggle{display:flex;align-items:center;justify-content:space-between;padding:3px 14px;background:var(--bg2);cursor:pointer;user-select:none;font-size:10px;color:var(--text-dim);letter-spacing:.5px;border-top:1px solid var(--border)}
+.log-toggle:hover{color:var(--text)}
+.log-panel{height:110px;background:var(--bg2);overflow-y:auto;font-size:11px;font-family:monospace;padding:4px 14px;direction:ltr;text-align:left;color:var(--text-dim)}
+.log-panel.hidden{display:none;height:0}
+.log-line{padding:1px 0;line-height:1.3}
+.log-line.err{color:#e53935}.log-line.ok{color:#4fae4e}.log-line.warn{color:#f97316}.log-line.prog{color:#fbbf24}.log-line.inf{color:#60a5fa}
 
-        .messages {
-            flex: 1;
-            overflow-y: auto;
-            padding: 18px;
-            direction: rtl;
-            text-align: right;
-        }
-        .message {
-            margin-bottom: 16px;
-            padding: 12px 14px;
-            background: var(--surface);
-            border-radius: 12px;
-            border: 1px solid var(--border);
-            box-shadow: 0 6px 20px rgba(5, 10, 22, 0.2);
-            max-width: 920px;
-        }
-        .message-header {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 8px;
-            font-size: 12px;
-            color: var(--text-dim);
-            direction: ltr;
-        }
-        .message-text {
-            line-height: 1.8;
-            white-space: pre-wrap;
-            word-break: break-word;
-        }
-        .media-tag {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 4px;
-            background: var(--surface2);
-            color: var(--text-dim);
-            font-size: 12px;
-            margin-bottom: 4px;
-        }
+/* ===== EMPTY STATE ===== */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text-dim);gap:14px;text-align:center;padding:20px}
+.empty-state .big-icon{font-size:52px;opacity:.25}
+.empty-state p{font-size:14px;max-width:240px}
 
-        .send-panel {
-            display: none;
-            padding: 10px 12px;
-            background: var(--surface);
-            border-top: 1px solid var(--border);
-            direction: rtl;
-        }
-        .send-panel.visible { display: flex; gap: 8px; align-items: center; }
-        .send-input {
-            flex: 1;
-            padding: 8px 12px;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            background: var(--bg);
-            color: var(--text);
-            font-family: inherit;
-            font-size: 14px;
-            direction: rtl;
-        }
-        .send-btn {
-            padding: 8px 18px;
-            border: none;
-            border-radius: 10px;
-            background: var(--send-color);
-            color: white;
-            cursor: pointer;
-            font-family: inherit;
-            font-size: 13px;
-        }
-        .send-btn:hover { background: #0284c7; }
+/* ===== MODALS ===== */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:100;justify-content:center;align-items:center}
+.modal-overlay.active{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;width:440px;max-width:95vw;max-height:90vh;overflow-y:auto;direction:rtl}
+html[dir=ltr] .modal{direction:ltr}
+.modal h2{margin-bottom:16px;font-size:17px;font-weight:600}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap}
 
-        .progress-panel {
-            height: 56px;
-            min-height: 56px;
-            background: rgba(14, 20, 38, 0.95);
-            border-top: 1px solid var(--border);
-            border-bottom: 1px solid var(--border);
-            overflow-y: auto;
-            font-size: 12px;
-            font-family: 'Vazirmatn', monospace;
-            padding: 12px 12px;
-            direction: ltr;
-            text-align: left;
-            color: var(--text-dim);
-        }
-        .progress-item {
-            margin-bottom: 8px;
-            padding: 6px;
-            border-radius: 4px;
-            background: var(--bg);
-        }
-        .progress-label {
-            font-size: 11px;
-            margin-bottom: 3px;
-            color: var(--text-dim);
-        }
-        .progress-bar {
-            width: 100%;
-            height: 6px;
-            background: var(--border);
-            border-radius: 3px;
-            overflow: hidden;
-        }
-        .progress-fill {
-            height: 100%;
-            background: var(--accent);
-            transition: width 0.2s;
-        }
-        .progress-fill.send { background: var(--send-color); }
+/* ===== FORMS ===== */
+.form-group{margin-bottom:12px}
+.form-group label{display:block;margin-bottom:4px;font-size:12px;color:var(--text-dim)}
+.form-group input,.form-group textarea,.form-group select{width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;direction:ltr;text-align:left;outline:none}
+.form-group input:focus,.form-group textarea:focus,.form-group select:focus{border-color:var(--accent)}
+.form-group textarea{min-height:65px;resize:vertical}
+.form-group .row{display:flex;gap:8px;align-items:center}
+.form-group .row input[type=checkbox]{width:auto;accent-color:var(--accent)}
+.form-group .row label{margin:0;cursor:pointer;font-size:13px;color:var(--text)}
 
-        .log-panel-wrapper {
-            border-top: 1px solid var(--border);
-            display: flex;
-            flex-direction: column;
-        }
-        .log-panel-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 4px 12px;
-            background: rgba(14, 20, 38, 0.98);
-            cursor: pointer;
-            user-select: none;
-            font-size: 11px;
-            color: var(--text-dim);
-            letter-spacing: 0.5px;
-        }
-        .log-panel-header:hover { color: var(--text); }
-        .log-toggle-icon { font-size: 10px; }
-        .log-panel {
-            height: 150px;
-            min-height: 100px;
-            background: rgba(14, 20, 38, 0.95);
-            overflow-y: auto;
-            font-size: 12px;
-            font-family: monospace;
-            padding: 8px 12px;
-            direction: ltr;
-            text-align: left;
-            color: var(--text-dim);
-        }
-        .log-panel.hidden { display: none; }
-        .log-line {
-            padding: 2px 0;
-            line-height: 1.3;
-        }
-        .log-line.info { color: #60a5fa; }
-        .log-line.progress { color: #fbbf24; }
-        .log-line.error { color: #ef4444; }
-        .log-line.success { color: #22c55e; }
-        .log-line.warning { color: #f97316; }
+/* ===== BUTTONS ===== */
+.btn{padding:7px 16px;border:none;border-radius:8px;font-size:13px;cursor:pointer;transition:background .15s;font-family:inherit}
+.btn-flat{background:transparent;color:var(--accent)}
+.btn-flat:hover{background:var(--hover)}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent-hover)}
+.btn-danger{background:var(--error);color:#fff}
+.btn-danger:hover{background:#c62828}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text)}
+.btn-outline:hover{background:var(--hover)}
+.btn-sm{padding:4px 10px;font-size:11px}
 
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.7);
-            z-index: 100;
-            justify-content: center;
-            align-items: center;
-        }
-        .modal-overlay.active { display: flex; }
-        .modal {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 24px;
-            width: 440px;
-            max-width: 95vw;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-        .modal h2 { margin-bottom: 20px; font-size: 18px; }
-        .form-group { margin-bottom: 16px; }
-        .form-group label {
-            display: block;
-            margin-bottom: 4px;
-            font-size: 13px;
-            color: var(--text-dim);
-        }
-        .form-group input,
-        .form-group textarea,
-        .form-group select {
-            width: 100%;
-            padding: 8px 12px;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            background: var(--bg);
-            color: var(--text);
-            font-family: inherit;
-            font-size: 14px;
-            direction: ltr;
-            text-align: left;
-        }
-        .form-group textarea { min-height: 80px; resize: vertical; }
+/* ===== SETTINGS MODAL ===== */
+.font-size-row{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.font-size-row label{font-size:12px;color:var(--text-dim);white-space:nowrap}
+.font-size-row input[type=range]{flex:1;accent-color:var(--accent)}
+.font-size-val{font-size:12px;color:var(--text);min-width:28px;text-align:center;background:var(--bg);padding:2px 6px;border-radius:4px;border:1px solid var(--border)}
+.lang-row{display:flex;gap:8px;margin-top:4px}
+.lang-btn{flex:1;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text-dim);font-size:13px;transition:all .15s}
+.lang-btn:hover{background:var(--hover)}
+.lang-btn.active-lang{border-color:var(--accent);background:rgba(51,144,236,.12);color:var(--accent);font-weight:600}
 
-        .empty-state {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100%;
-            color: var(--text-dim);
-            gap: 16px;
-        }
-        .empty-state p { font-size: 14px; }
+/* ===== PROFILES MODAL ===== */
+.profile-row{display:flex;flex-direction:column;border-bottom:1px solid var(--border)}
+.profile-row-main{display:flex;align-items:center;gap:10px;padding:10px;cursor:pointer;transition:background .1s}
+.profile-row-main:hover{background:var(--hover)}
+.profile-row.active-profile .profile-row-main{background:rgba(51,144,236,.08)}
+.profile-row-avatar{width:40px;height:40px;border-radius:50%;background:var(--accent);color:#fff;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.profile-row.active-profile .profile-row-avatar{background:var(--success)}
+.profile-row-info{flex:1;min-width:0}
+.profile-row-name{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.profile-row-domain{font-size:11px;color:var(--text-dim)}
+.profile-row-btns{display:flex;gap:4px;flex-shrink:0}
+.share-panel{padding:8px 10px;background:var(--bg);border-top:1px solid var(--border)}
+.share-panel-inner{display:flex;gap:6px;align-items:center}
+.share-uri-input{flex:1;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--accent);font-family:monospace;font-size:11px;direction:ltr;text-align:left;outline:none}
+.active-badge{display:inline-block;font-size:9px;padding:1px 6px;border-radius:8px;background:var(--success);color:#fff;margin-left:6px;vertical-align:middle}
+html[dir=ltr] .active-badge{margin-left:0;margin-right:6px}
+.section-divider{border:none;border-top:1px solid var(--border);margin:14px 0}
+.info-note{background:rgba(51,144,236,.08);border:1px solid rgba(51,144,236,.2);border-radius:6px;padding:8px 12px;font-size:12px;color:var(--text-dim);margin-bottom:10px;line-height:1.5}
+.tg-warning{background:rgba(229,57,53,.1);border:1px solid rgba(229,57,53,.3);border-radius:6px;padding:8px 12px;font-size:11px;color:#ef9a9a;margin-bottom:12px;display:none}
+.tg-warning.visible{display:block}
+.import-section{margin-top:14px}
+.import-row{display:flex;gap:8px}
+.import-row input{flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:12px;direction:ltr;text-align:left;outline:none}
+.import-row input:focus{border-color:var(--accent)}
 
-        .footer-link {
-            padding: 12px 16px;
-            text-align: center;
-            font-size: 11px;
-            color: var(--text-dim);
-            border-top: 1px solid var(--border);
-            margin-top: auto;
-        }
-        .footer-link a { color: var(--accent); text-decoration: none; }
-        .footer-link a:hover { text-decoration: underline; }
-        .footer-link .free-iran { color: var(--success); font-weight: bold; }
+/* ===== CHANNEL EDITOR IN PROFILE ===== */
+.channel-editor-row{display:flex;gap:6px;align-items:center;margin-bottom:8px}
+.channel-editor-row input{flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;direction:ltr;text-align:left;outline:none}
+.channel-editor-row input:focus{border-color:var(--accent)}
+.channel-list-item{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)}
+.channel-list-item:last-child{border-bottom:none}
+.channel-list-item span{font-size:13px;direction:ltr}
 
-        .sidebar-overlay {
-            display: none;
-            position: fixed;
-            inset: 58px 0 0 0;
-            background: rgba(2, 6, 20, 0.55);
-            z-index: 9;
-        }
+/* ===== TOAST ===== */
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:#333;color:#fff;padding:8px 18px;border-radius:20px;font-size:13px;opacity:0;transition:all .25s;z-index:999;pointer-events:none;white-space:nowrap}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
-        @media (max-width: 900px) {
-            .mobile-menu-btn { display: inline-flex; align-items: center; justify-content: center; }
-            .header {
-                padding: 10px 12px;
-            }
-            .header-left {
-                gap: 8px;
-                min-width: 0;
-            }
-            .header h1 {
-                font-size: 15px;
-            }
-            .next-fetch-timer {
-                display: none;
-            }
-            .header-channel-name {
-                display: block;
-            }
-            .header h1 {
-                flex-shrink: 0;
-            }
-            .header-actions .btn {
-                padding: 6px 10px;
-                font-size: 12px;
-            }
-            .sidebar {
-                position: fixed;
-                top: 58px;
-                bottom: 0;
-                right: 0;
-                width: min(82vw, 300px);
-                min-width: 0;
-                z-index: 10;
-                transform: translateX(100%);
-                transition: transform 0.22s ease;
-                border-left: 1px solid var(--border);
-                border-right: none;
-            }
-            .main.sidebar-open .sidebar {
-                transform: translateX(0);
-            }
-            .main.sidebar-open + .sidebar-overlay {
-                display: block;
-            }
-            .messages {
-                padding: 12px;
-            }
-            .message {
-                margin-bottom: 12px;
-                border-radius: 10px;
-            }
-            .progress-panel {
-                height: 52px;
-                min-height: 52px;
-                padding: 10px;
-            }
-            .log-panel {
-                height: 120px;
-                min-height: 90px;
-                padding: 8px 10px;
-            }
-            .modal {
-                width: 100%;
-                max-width: 100%;
-                height: 100%;
-                max-height: 100%;
-                border-radius: 0;
-                padding: 16px;
-            }
-        }
+/* ===== MOBILE ===== */
+@media(max-width:768px){
+  .app{position:relative;overflow:hidden}
+  .sidebar{position:absolute;top:0;left:0;right:0;bottom:0;width:100%;z-index:2;transform:translateX(0);transition:transform .25s ease}
+  .chat-area{position:absolute;top:0;left:0;right:0;bottom:0;z-index:1;transform:translateX(100%);transition:transform .25s ease}
+  .app.chat-open .sidebar{transform:translateX(-100%)}
+  .app.chat-open .chat-area{transform:translateX(0)}
+  .back-btn{display:flex}
+  .msg{max-width:90%}
+  .modal{width:100%;max-width:100%;max-height:100%;border-radius:0;border-left:none;border-right:none;border-bottom:none;margin-top:auto;align-self:flex-end}
+  .modal-overlay.active{align-items:flex-end}
+}
 
-        @media (max-width: 520px) {
-            .send-panel.visible {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            .send-btn {
-                width: 100%;
-            }
-            .header-actions {
-                gap: 6px;
-            }
-            .header-actions .btn {
-                padding: 5px 8px;
-                font-size: 11px;
-            }
-        }
-
-        .tg-warning {
-            background: #3b1f1f;
-            border: 1px solid #7f1d1d;
-            border-radius: 6px;
-            padding: 8px 12px;
-            font-size: 12px;
-            color: #fca5a5;
-            margin-bottom: 16px;
-            display: none;
-        }
-        .tg-warning.visible { display: block; }
-
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
-    </style>
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+</style>
 </head>
 <body>
-    <div class="header">
-        <div class="header-left">
-            <button class="mobile-menu-btn" onclick="toggleSidebar()" aria-label="Open channels">☰</button>
-            <h1>thefeed</h1>
-            <span class="header-channel-name" id="headerChannelName"></span>
-            <span class="status-dot disconnected" id="statusDot"></span>
-            <span class="next-fetch-timer" id="nextFetchTimer"></span>
-        </div>
-        <div class="header-actions">
-            <button class="btn" onclick="doRefresh()">Refresh</button>
-            <button class="btn" onclick="openSettings()">Settings</button>
-        </div>
+<div class="app" id="app">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-header-top">
+        <button class="profile-btn" id="profileBtn" onclick="openProfiles()">
+          <div class="profile-btn-avatar" id="profileBtnAvatar">?</div>
+          <span class="profile-btn-name" id="profileBtnName" data-i18n="set_up">Set Up</span>
+          <span class="profile-btn-arrow">&#9660;</span>
+        </button>
+        <button class="icon-btn" onclick="openSettings()" title="Settings" data-i18n-title="settings">&#9881;</button>
+      </div>
+      <input class="sidebar-search" id="channelSearch" type="text" data-i18n-ph="search" placeholder="Search..." oninput="filterChannels()">
     </div>
-
-    <div class="main">
-        <div class="sidebar">
-            <div class="sidebar-title" style="display:flex;justify-content:space-between;align-items:center;">Channels
-                <button class="btn" style="padding:2px 8px;font-size:12px;" onclick="openChannelManager()" title="Manage channels">&#9998;</button>
-            </div>
-            <div id="channelList">
-                <div style="padding:16px;color:var(--text-dim);font-size:13px;">No channels</div>
-            </div>
-            <div class="footer-link">
-                <a href="https://github.com/sartoopjj/thefeed" target="_blank">GitHub</a>
-                &middot; <span class="free-iran">For FREE IRAN</span>
-            </div>
-        </div>
-
-        <div class="content">
-            <div class="messages" id="messages">
-                <div class="empty-state" id="emptyState">
-                    <p>No messages yet</p>
-                    <button class="btn btn-primary" onclick="openSettings()">Configure</button>
-                </div>
-            </div>
-            <div class="send-panel" id="sendPanel">
-                <input type="text" class="send-input" id="sendInput" placeholder="Type a message..." maxlength="4000">
-                <button class="send-btn" onclick="sendMessage()">Send</button>
-            </div>
-            <div class="progress-panel" id="progressPanel"></div>
-            <div class="log-panel-wrapper">
-                <div class="log-panel-header" onclick="toggleLog()">
-                    <span>LOG</span>
-                    <span class="log-toggle-icon" id="logToggleIcon">▶</span>
-                </div>
-                <div class="log-panel hidden" id="logPanel"></div>
-            </div>
-        </div>
+    <div class="channel-list" id="channelList">
+      <div style="padding:20px;text-align:center;color:var(--text-dim);font-size:13px" data-i18n="no_channels">No channels</div>
     </div>
-    <div class="sidebar-overlay" onclick="toggleSidebar(true)"></div>
-
-    <div class="modal-overlay" id="channelModal">
-        <div class="modal">
-            <h2>Manage Channels</h2>
-            <div class="form-group">
-                <label>Add Channel (username without @)</label>
-                <div style="display:flex;gap:8px;">
-                    <input type="text" id="addChannelInput" placeholder="channel_username">
-                    <button class="btn btn-primary" onclick="addChannel()">Add</button>
-                </div>
-            </div>
-            <div class="form-group">
-                <label>Current Channels</label>
-                <div id="channelManagerList" style="max-height:200px;overflow-y:auto;"></div>
-            </div>
-            <div id="channelManagerError" style="color:var(--error);margin-top:8px;font-size:13px;display:none;"></div>
-            <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:20px;">
-                <button class="btn" onclick="closeChannelManager()">Close</button>
-            </div>
-        </div>
+    <div class="sidebar-footer">
+      TELEGRAM: <a href="https://t.me/networkti" target="_blank">@networkti</a>
+      &middot;
+      <a href="https://github.com/sartoopjj/thefeed" target="_blank">GitHub</a>
     </div>
+  </div>
 
-    <div class="modal-overlay" id="settingsModal">
-        <div class="modal">
-            <h2>Settings</h2>
-            <div id="tgWarning" class="tg-warning">
-                Server is running without Telegram login. Some features (sending messages, private chats) are unavailable.
-                To enable, restart the server with Telegram credentials.
-            </div>
-            <div class="form-group">
-                <label>Domain</label>
-                <input type="text" id="cfgDomain" placeholder="t.example.com">
-            </div>
-            <div class="form-group">
-                <label>Passphrase</label>
-                <input type="password" id="cfgKey" placeholder="Encryption passphrase">
-            </div>
-            <div class="form-group">
-                <label>Resolvers (one per line)</label>
-                <textarea id="cfgResolvers" placeholder="8.8.8.8&#10;1.1.1.1"></textarea>
-            </div>
-            <div class="form-group">
-                <label>Query Mode</label>
-                <select id="cfgQueryMode">
-                    <option value="single">Single label (base32, stealthier)</option>
-                    <option value="double">Multi-label (hex)</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Rate Limit (queries/sec, 0 = unlimited)</label>
-                <input type="number" id="cfgRateLimit" value="5" min="0" step="0.1">
-            </div>
-            <div class="form-group" style="flex-direction:row;align-items:center;gap:10px;">
-                <input type="checkbox" id="cfgDebug" checked style="width:auto;margin:0;">
-                <label for="cfgDebug" style="margin:0;cursor:pointer;">Debug mode (log generated query names)</label>
-            </div>
-            <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:20px;">
-                <button class="btn" onclick="closeSettings()">Cancel</button>
-                <button class="btn btn-primary" onclick="saveConfig()">Save &amp; Connect</button>
-            </div>
-            <div id="settingsError" style="color:var(--error);margin-top:12px;font-size:13px;display:none;"></div>
-            <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);text-align:center;">
-                <a href="https://github.com/sartoopjj/thefeed" target="_blank" style="color:var(--accent);font-size:12px;text-decoration:none;">github.com/sartoopjj/thefeed</a>
-                <div style="margin-top:6px;font-size:12px;" class="free-iran">For FREE IRAN</div>
-            </div>
-        </div>
+  <!-- CHAT AREA -->
+  <div class="chat-area">
+    <div class="chat-header">
+      <button class="back-btn" onclick="openSidebar()">&#8592;</button>
+      <div class="chat-header-info">
+        <div class="chat-header-name" id="chatName">thefeed</div>
+      </div>
+      <div class="chat-header-actions">
+        <span class="next-fetch-label" id="nextFetchTimer"></span><span class="next-fetch-info" id="nextFetchInfoBtn" style="display:none" data-i18n-title="next_fetch_info" title="" onclick="showToast(t('next_fetch_info'))" tabindex="0">ⓘ</span>
+        <button class="icon-btn" onclick="doRefresh()" title="Refresh">&#8635;</button>
+      </div>
     </div>
+    <div class="messages" id="messages">
+      <div class="empty-state">
+        <div class="big-icon">&#128225;</div>
+        <p data-i18n="configure_server">Configure a server to start reading</p>
+        <button class="btn btn-primary" onclick="openProfiles()" data-i18n="set_up">Set Up</button>
+      </div>
+    </div>
+    <div class="send-panel" id="sendPanel">
+      <input class="send-input" id="sendInput" data-i18n-ph="write_message" placeholder="Write a message..." maxlength="4000">
+      <button class="send-btn" onclick="sendMessage()">&#10148;</button>
+    </div>
+    <div class="progress-panel" id="progressPanel"></div>
+    <div class="log-toggle" onclick="toggleLog()"><span>LOG</span><span id="logToggleIcon">&#9654;</span></div>
+    <div class="log-panel hidden" id="logPanel"></div>
+  </div>
+</div>
 
-    <script>
-        var selectedChannel = 0;
-        var channels = [];
-        var eventSource = null;
-        var autoRefreshTimer = null;
-        var telegramLoggedIn = false;
-        var logVisible = false;
+<!-- TOAST -->
+<div id="toast"></div>
 
-        var serverNextFetch = 0;
-        var nextFetchInterval = null;
-        var previousMsgIDs = {};
-        var newMsgCount = 0;
-        var originalTitle = document.title;
+<!-- ===== SETTINGS MODAL ===== -->
+<div class="modal-overlay" id="settingsModal">
+<div class="modal">
+  <h2 data-i18n="settings">&#9881; Settings</h2>
+  <div class="font-size-row">
+    <label data-i18n="font_size">Font Size</label>
+    <input type="range" id="fontSizeSlider" min="11" max="22" value="14" oninput="previewFontSize(this.value)">
+    <span class="font-size-val" id="fontSizeVal">14</span>
+  </div>
+  <div class="form-group">
+    <div class="row">
+      <input type="checkbox" id="cfgDebug">
+      <label for="cfgDebug" data-i18n="debug_mode">Debug mode</label>
+    </div>
+  </div>
+  <div class="form-group">
+    <label data-i18n="language">Language</label>
+    <div class="lang-row">
+      <button class="lang-btn" id="langFa" onclick="setLang('fa')">&#1601;&#1575;&#1585;&#1587;&#1740;</button>
+      <button class="lang-btn" id="langEn" onclick="setLang('en')">English</button>
+    </div>
+  </div>
+  <div class="modal-actions">
+    <button class="btn btn-flat" onclick="closeSettings()" data-i18n="cancel">Cancel</button>
+    <button class="btn btn-primary" onclick="saveSettings()" data-i18n="save">Save</button>
+  </div>
+</div>
+</div>
 
-        function toggleSidebar(forceClose) {
-            var main = document.querySelector('.main');
-            if (!main) return;
-            if (forceClose) {
-                main.classList.remove('sidebar-open');
-                return;
-            }
-            main.classList.toggle('sidebar-open');
-        }
+<!-- ===== PROFILES MODAL ===== -->
+<div class="modal-overlay" id="profilesModal">
+<div class="modal">
+  <h2 data-i18n="profiles">Profiles</h2>
+  <div id="profilesListEl"></div>
+  <!-- Import URI -->
+  <div class="import-section">
+    <div style="font-size:12px;color:var(--text-dim);margin-bottom:6px" data-i18n="import_uri_label">Import URI</div>
+    <div class="import-row">
+      <input id="importUriInput" placeholder="thefeed://..." data-i18n-ph="import_uri_ph">
+      <button class="btn btn-primary btn-sm" onclick="doImportUri()" data-i18n="import">Import</button>
+    </div>
+    <div id="importError" style="color:var(--error);font-size:12px;display:none;margin-top:6px"></div>
+    <div id="importSuccess" style="color:var(--success);font-size:12px;display:none;margin-top:6px"></div>
+  </div>
+  <div class="modal-actions">
+    <button class="btn btn-flat" onclick="closeProfiles()" data-i18n="close">Close</button>
+    <button class="btn btn-primary" onclick="openProfileEditor(null)" data-i18n="add_profile">+ Add Profile</button>
+  </div>
+</div>
+</div>
 
-        function getFirstVisibleChannel() {
-            if (channels.length > 0) return 1;
-            return 0;
-        }
+<!-- ===== PROFILE EDITOR MODAL ===== -->
+<div class="modal-overlay" id="profileEditorModal">
+<div class="modal">
+  <h2 id="profileEditorTitle" data-i18n="new_profile">New Profile</h2>
+  <div id="peWarning" class="tg-warning"></div>
+  <div class="form-group"><label data-i18n="nickname">Nickname</label><input id="peNick" placeholder="My Server"></div>
+  <div class="form-group"><label data-i18n="domain">Domain</label><input id="peDomain" placeholder="t.example.com"></div>
+  <div class="form-group"><label data-i18n="passphrase">Passphrase</label><input type="password" id="peKey" placeholder="..."></div>
+  <div class="form-group"><label data-i18n="resolvers">Resolvers</label><textarea id="peResolvers" placeholder="8.8.8.8&#10;1.1.1.1"></textarea></div>
+  <div class="form-group"><label data-i18n="query_mode">Query Mode</label>
+    <select id="peQueryMode">
+      <option value="single">Single label (base32)</option>
+      <option value="double">Multi-label (hex)</option>
+    </select>
+  </div>
+  <div class="form-group"><label data-i18n="rate_limit">Rate Limit (q/s, 0=unlimited)</label><input type="number" id="peRateLimit" value="5" min="0" step="0.1"></div>
+  <!-- Channel Management (editing only) -->
+  <div id="peChannelSection" style="display:none">
+    <hr class="section-divider">
+    <div style="font-size:14px;font-weight:600;margin-bottom:8px" data-i18n="channels">Channels</div>
+    <div class="info-note" id="peChannelNote" data-i18n="channel_mgmt_note">Channel management requires server-side support.</div>
+    <div class="channel-editor-row" id="peAddChannelRow" style="display:none">
+      <input id="peAddChannelInput" data-i18n-ph="channel_placeholder" placeholder="channel_username">
+      <button class="btn btn-primary btn-sm" onclick="addChannelEditor()" data-i18n="add">Add</button>
+    </div>
+    <div id="peChannelList" style="max-height:150px;overflow-y:auto"></div>
+  </div>
+  <div id="peError" style="color:var(--error);font-size:12px;display:none;margin-top:8px"></div>
+  <div class="modal-actions">
+    <button class="btn btn-flat" onclick="closeProfileEditor()" data-i18n="cancel">Cancel</button>
+    <button class="btn btn-danger" id="peDeleteBtn" style="display:none" onclick="deleteEditingProfile()" data-i18n="delete">Delete</button>
+    <button class="btn btn-primary" onclick="saveProfile()" data-i18n="save">Save</button>
+  </div>
+</div>
+</div>
 
-        async function init() {
-            try {
-                var resp = await fetch('/api/status');
-                var status = await resp.json();
-                if (!status.configured) {
-                    openSettings();
-                } else {
-                    document.getElementById('statusDot').className = 'status-dot connected';
-                    telegramLoggedIn = !!status.telegramLoggedIn;
-                    serverNextFetch = status.nextFetch || 0;
-                    updateNextFetchDisplay();
-                    await loadChannels();
-                    if (channels && channels.length > 0) {
-                        var firstVisible = getFirstVisibleChannel();
-                        if (firstVisible > 0) {
-                            await selectChannel(firstVisible);
-                        }
-                    } else {
-                        showInitProgress();
-                        await doRefresh();
-                    }
-                    startAutoRefresh();
-                }
-            } catch (e) {}
-            connectSSE();
-        }
+<script>
+// ===== i18n =====
+var I18N = {
+  fa: {
+    search:'جستجو...',settings:'تنظیمات',profiles:'پروفایل‌ها',
+    no_channels:'کانالی وجود ندارد',loading:'در حال بارگذاری...',no_messages:'هنوز پیامی در این کانال وجود ندارد',
+    write_message:'پیام بنویسید...',configure_server:'برای شروع یک سرور راه‌اندازی کنید',
+    set_up:'راه‌اندازی',switching:'در حال تغییر پروفایل...',
+    font_size:'اندازه قلم',debug_mode:'حالت دیباگ',language:'زبان',
+    next_fetch_info:'زمان باقی‌مانده تا دریافت بعدی محتوا توسط سرور',
+    no_profiles:'هنوز پروفایلی وجود ندارد',add_profile:'+ پروفایل جدید',
+    import_uri_label:'وارد کردن پیوند (URI)',import_uri_ph:'thefeed://...',import:'وارد کردن',close:'بستن',
+    invalid_uri:'پیوند باید با thefeed:// شروع شود',uri_missing:'پیوند فاقد دامنه یا رمز است',
+    import_success:'وارد شد! پروفایل "{d}" ساخته شد.',import_error:'خطا در وارد کردن',
+    new_profile:'پروفایل جدید',edit_profile:'ویرایش پروفایل',
+    nickname:'نام مستعار',domain:'دامنه',passphrase:'رمز رمزنگاری',
+    resolvers:'Resolvers (یک در هر خط)',query_mode:'حالت کوئری',rate_limit:'محدودیت نرخ (ک/ث، ۰=بدون محدودیت)',
+    channels:'کانال\u200cها',add:'افزودن',remove:'حذف',
+    channel_mgmt_note:'مدیریت کانال نیاز به پشتیبانی سمت سرور دارد. اگر توسط ادمین غیرفعال شده باشد، افزودن/حذف کار نمی\u200cکند.',
+    channel_mgmt_inactive:'برای مدیریت کانال\u200cها، ابتدا این پروفایل را فعال کنید.',
+    channel_placeholder:'نام کاربری کانال',
+    edit:'ویرایش',share:'اشتراک\u200cگذاری',delete:'حذف',save:'ذخیره',cancel:'لغو',
+    copied:'پیوند کپی شد!',copy:'کپی',active:'فعال',
+    private:'خصوصی',no_config:'ابتدا پروفایل را ذخیره کنید',
+  },
+  en: {
+    search:'Search...',settings:'Settings',profiles:'Profiles',
+    no_channels:'No channels',loading:'Loading...',no_messages:'No messages in this channel',
+    write_message:'Write a message...',configure_server:'Configure a server to start reading',
+    set_up:'Set Up',switching:'Switching profile...',
+    font_size:'Font Size',debug_mode:'Debug mode',language:'Language',
+    next_fetch_info:'Time until the server next fetches fresh channel content',
+    no_profiles:'No profiles yet',add_profile:'+ Add Profile',
+    import_uri_label:'Import URI',import_uri_ph:'thefeed://...',import:'Import',close:'Close',
+    invalid_uri:'URI must start with thefeed://',uri_missing:'URI missing domain or passphrase',
+    import_success:'Imported! Profile "{d}" created.',import_error:'Import error',
+    new_profile:'New Profile',edit_profile:'Edit Profile',
+    nickname:'Nickname',domain:'Domain',passphrase:'Passphrase',
+    resolvers:'Resolvers (one per line)',query_mode:'Query Mode',rate_limit:'Rate Limit (q/s, 0=unlimited)',
+    channels:'Channels',add:'Add',remove:'Remove',
+    channel_mgmt_note:'Channel management requires server-side support. If disabled by the server admin, adding/removing channels will not work.',
+    channel_mgmt_inactive:'Switch to this profile first to manage its channels.',
+    channel_placeholder:'channel_username',
+    edit:'Edit',share:'Share',delete:'Delete',save:'Save',cancel:'Cancel',
+    copied:'URI copied!',copy:'Copy',active:'Active',
+    private:'Private',no_config:'Save a profile first',
+  }
+};
+var lang = localStorage.getItem('thefeed_lang') || 'fa';
+function t(k){return (I18N[lang]&&I18N[lang][k])||I18N.en[k]||k}
+function applyLang(){
+  var isRtl = lang==='fa';
+  document.documentElement.dir = isRtl?'rtl':'ltr';
+  document.documentElement.lang = lang;
+  document.querySelectorAll('[data-i18n]').forEach(function(el){el.textContent=t(el.dataset.i18n)});
+  document.querySelectorAll('[data-i18n-ph]').forEach(function(el){el.placeholder=t(el.dataset.i18nPh)});
+  document.querySelectorAll('[data-i18n-title]').forEach(function(el){el.title=t(el.dataset.i18nTitle)});
+  document.getElementById('langFa').classList.toggle('active-lang',lang==='fa');
+  document.getElementById('langEn').classList.toggle('active-lang',lang==='en');
+  document.getElementById('sendInput').style.direction=isRtl?'rtl':'ltr';
+  // Re-render dynamic content
+  if(channels.length>0)renderChannels();
+}
+function setLang(l){lang=l;localStorage.setItem('thefeed_lang',l);applyLang()}
 
-        function showInitProgress() {
-            var panel = document.getElementById('progressPanel');
-            var item = document.createElement('div');
-            item.id = 'progress-current';
-            item.className = 'progress-item';
-            item.innerHTML = '<div class="progress-label">Starting to get metadata...</div>' +
-                '<div class="progress-bar"><div class="progress-fill" style="width:0%"></div></div>';
-            panel.appendChild(item);
-        }
+// ===== STATE =====
+var selectedChannel=0,channels=[],eventSource=null,autoRefreshTimer=null,telegramLoggedIn=false,logVisible=false;
+var serverNextFetch=0,nextFetchInterval=null,previousMsgIDs={},currentMsgTexts=[];
+var profiles=null,activeProfileId='',editingProfileId=null;
 
-        function startAutoRefresh() {
-            if (autoRefreshTimer) return;
-            autoRefreshTimer = setInterval(function() {
-                if (selectedChannel > 0) {
-                    doRefresh(true);
-                }
-            }, 600000);
-        }
+// ===== MOBILE NAV =====
+function openChat(){if(window.innerWidth<=768)document.getElementById('app').classList.add('chat-open')}
+function openSidebar(){document.getElementById('app').classList.remove('chat-open')}
+function filterChannels(){
+  var q=document.getElementById('channelSearch').value.toLowerCase();
+  document.querySelectorAll('.ch-item').forEach(function(el){el.style.display=el.dataset.name.toLowerCase().includes(q)?'flex':'none'});
+}
 
-        function updateNextFetchDisplay() {
-            if (nextFetchInterval) clearInterval(nextFetchInterval);
-            if (!serverNextFetch) {
-                document.getElementById('nextFetchTimer').textContent = '';
-                return;
-            }
-            function tick() {
-                var now = Math.floor(Date.now() / 1000);
-                var diff = serverNextFetch - now;
-                if (diff <= 0) {
-                    document.getElementById('nextFetchTimer').textContent = 'Server refreshing...';
-                    return;
-                }
-                var m = Math.floor(diff / 60);
-                var s = diff % 60;
-                document.getElementById('nextFetchTimer').textContent = 'Server refresh in ' + m + ':' + (s < 10 ? '0' : '') + s;
-            }
-            tick();
-            nextFetchInterval = setInterval(tick, 1000);
-        }
+// ===== INIT =====
+async function init(){
+  applyLang();
+  await loadFontSize();
+  connectSSE();
+  try{
+    var r=await fetch('/api/status');var st=await r.json();
+    if(!st.configured){openProfiles();return}
+    telegramLoggedIn=!!st.telegramLoggedIn;
+    serverNextFetch=st.nextFetch||0;
+    updateNextFetchDisplay();
+    await loadProfiles();
+    await loadChannels();
+    if(channels&&channels.length>0)await selectChannel(1);
+    else{showInitProgress();await doRefresh();openChat()}
+    startAutoRefresh();
+  }catch(e){}
+}
 
-        function connectSSE() {
-            if (eventSource) eventSource.close();
-            eventSource = new EventSource('/api/events');
-            eventSource.addEventListener('log', function(e) {
-                addLogLine(JSON.parse(e.data));
-            });
-            eventSource.addEventListener('update', async function(e) {
-                var wasEmpty = channels.length === 0;
-                var oldIDs = {};
-                for (var i = 0; i < channels.length; i++) {
-                    oldIDs[i + 1] = channels[i].LastMsgID || channels[i].lastMsgID || 0;
-                }
-                await loadChannels();
-                var hasNew = false;
-                for (var i = 0; i < channels.length; i++) {
-                    var newID = channels[i].LastMsgID || channels[i].lastMsgID || 0;
-                    var oldID = oldIDs[i + 1] || 0;
-                    if (oldID > 0 && newID > oldID && (i + 1) !== selectedChannel) {
-                        hasNew = true;
-                    }
-                }
-                if (hasNew) {
-                    newMsgCount++;
-                    document.title = '(' + newMsgCount + ') ' + originalTitle;
-                }
-                if (wasEmpty && channels.length > 0 && selectedChannel === 0) {
-                    var firstVisible = getFirstVisibleChannel();
-                    if (firstVisible > 0) {
-                        selectChannel(firstVisible);
-                    }
-                } else if (selectedChannel > 0) {
-                    await loadMessages(selectedChannel);
-                    updateSendPanel();
-                }
-            });
-            eventSource.onerror = function() {
-                document.getElementById('statusDot').className = 'status-dot disconnected';
-                if (eventSource.readyState === EventSource.CLOSED) {
-                    eventSource.close();
-                    setTimeout(connectSSE, 3000);
-                }
-            };
-            eventSource.onopen = function() {
-                document.getElementById('statusDot').className = 'status-dot connected';
-            };
-        }
+// ===== FONT SIZE =====
+async function loadFontSize(){
+  try{
+    var r=await fetch('/api/settings');var s=await r.json();
+    if(s.fontSize>=11&&s.fontSize<=22){
+      document.documentElement.style.setProperty('--font-size',s.fontSize+'px');
+      document.getElementById('fontSizeSlider').value=s.fontSize;
+      document.getElementById('fontSizeVal').textContent=s.fontSize;
+    }
+    if(s.debug)document.getElementById('cfgDebug').checked=true;
+  }catch(e){}
+}
+function previewFontSize(v){document.documentElement.style.setProperty('--font-size',v+'px');document.getElementById('fontSizeVal').textContent=v}
 
-        function renderChannels() {
-            var el = document.getElementById('channelList');
-            if (!channels || channels.length === 0) {
-                el.innerHTML = '<div style="padding:16px;color:var(--text-dim);font-size:13px;">No channels</div>';
-                return;
-            }
-            var html = '';
-            var privates = [];
-            var publics = [];
-            for (var i = 0; i < channels.length; i++) {
-                var ch = channels[i];
-                var ct = ch.ChatType || ch.chatType || 0;
-                var entry = {ch: ch, idx: i};
-                if (ct === 1) privates.push(entry);
-                else publics.push(entry);
-            }
+// ===== SETTINGS =====
+function openSettings(){document.getElementById('settingsModal').classList.add('active')}
+function closeSettings(){document.getElementById('settingsModal').classList.remove('active')}
+async function saveSettings(){
+  var fs=parseInt(document.getElementById('fontSizeSlider').value)||14;
+  var dbg=document.getElementById('cfgDebug').checked;
+  try{await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fontSize:fs,debug:dbg})})}catch(e){}
+  closeSettings();
+}
 
-            function renderSection(title, items) {
-                if (items.length === 0) return '';
-                var h = '';
-                if (title) h += '<div class="sidebar-title" style="padding-top:8px;">' + title + '</div>';
-                for (var j = 0; j < items.length; j++) {
-                    var e = items[j];
-                    var num = e.idx + 1;
-                    var active = num === selectedChannel ? ' active' : '';
-                    var name = e.ch.Name || e.ch.name || 'Channel ' + num;
-                    var ct2 = e.ch.ChatType || e.ch.chatType || 0;
-                    var badge = '';
-                    if (ct2 === 1) badge = '<span class="channel-type-badge private">Private</span>';
-                    var newBadge = '';
-                    var lastID = e.ch.LastMsgID || e.ch.lastMsgID || 0;
-                    var prevID = previousMsgIDs[num] || 0;
-                    if (prevID > 0 && lastID > prevID) {
-                        newBadge = '<span class="new-msg-badge">NEW</span>';
-                    }
-                    h += '<div class="channel-item' + active + '" onclick="selectChannel(' + num + ')">' +
-                        '<span>' + escapeHtml(name) + badge + '</span>' +
-                        newBadge + '</div>';
-                }
-                return h;
-            }
+// ===== SSE =====
+function connectSSE(){
+  if(eventSource)eventSource.close();
+  eventSource=new EventSource('/api/events');
+  eventSource.addEventListener('log',function(e){addLogLine(JSON.parse(e.data))});
+  eventSource.addEventListener('update',async function(e){
+    var data;try{data=JSON.parse(e.data)}catch(x){data=e.data}
+    var wasEmpty=channels.length===0;
+    await loadChannels();
+    if(wasEmpty&&channels.length>0&&selectedChannel===0){
+      closeProfiles();
+      await selectChannel(1);return
+    }
+    if(data&&typeof data==='object'&&data.channel){
+      if(data.channel===selectedChannel)await loadMessages(data.channel)
+    }else if(selectedChannel>0){await loadMessages(selectedChannel)}
+    updateSendPanel();
+  });
+  eventSource.onerror=function(){
+    if(eventSource.readyState===EventSource.CLOSED){eventSource.close();setTimeout(connectSSE,3000)}
+  };
+}
 
-            html += renderSection('', publics);
-            html += renderSection('Private', privates);
-            el.innerHTML = html;
-        }
+// ===== PROFILES =====
+async function loadProfiles(){
+  try{
+    var r=await fetch('/api/profiles');profiles=await r.json();
+    activeProfileId=profiles.active||'';
+    renderProfileBtn();
+  }catch(e){profiles=null}
+}
 
-        async function selectChannel(num) {
-            selectedChannel = num;
-            newMsgCount = 0;
-            document.title = originalTitle;
-            toggleSidebar(true);
-            var chName = (channels[num - 1] && (channels[num - 1].Name || channels[num - 1].name)) || '';
-            var nameEl = document.getElementById('headerChannelName');
-            if (nameEl) nameEl.textContent = chName ? ('· ' + chName) : '';
-            renderChannels();
-            updateSendPanel();
-            document.getElementById('messages').innerHTML = '<div class="empty-state"><p>Loading...</p></div>';
+function renderProfileBtn(){
+  var nameEl=document.getElementById('profileBtnName');
+  var avatarEl=document.getElementById('profileBtnAvatar');
+  if(!profiles||!profiles.profiles||!profiles.profiles.length){
+    nameEl.textContent=t('set_up');avatarEl.textContent='?';return
+  }
+  var active=profiles.profiles.find(function(p){return p.id===activeProfileId});
+  var display=(active&&(active.nickname||active.config.domain))||t('profiles');
+  nameEl.textContent=display;
+  avatarEl.textContent=(active&&(active.nickname||active.config.domain)||'?').charAt(0).toUpperCase();
+}
 
-            var panel = document.getElementById('progressPanel');
-            var item = document.getElementById('progress-current');
-            if (!item) {
-                item = document.createElement('div');
-                item.id = 'progress-current';
-                item.className = 'progress-item';
-                panel.appendChild(item);
-            }
-            var chName = (channels[num - 1] && (channels[num - 1].Name || channels[num - 1].name)) || 'Channel ' + num;
-            item.innerHTML = '<div class="progress-label">' + escapeHtml(chName) + '</div>' +
-                '<div class="progress-bar"><div class="progress-fill" style="width:0%"></div></div>';
+function openProfiles(){
+  document.getElementById('profilesModal').classList.add('active');
+  document.getElementById('importError').style.display='none';
+  document.getElementById('importSuccess').style.display='none';
+  document.getElementById('importUriInput').value='';
+  renderProfilesModal();
+}
+function closeProfiles(){document.getElementById('profilesModal').classList.remove('active')}
 
-            await loadMessages(num);
-            await doRefresh(true);
-        }
+function buildProfileUri(id){
+  if(!profiles||!profiles.profiles)return'';
+  var p=profiles.profiles.find(function(x){return x.id===id});
+  if(!p||!p.config.domain)return'';
+  return'thefeed://'+encodeURIComponent(p.config.domain)+'/'+encodeURIComponent(p.config.key)+'?r='+encodeURIComponent((p.config.resolvers||[]).join(','));
+}
 
-        function updateSendPanel() {
-            var panel = document.getElementById('sendPanel');
-            var ch = channels[selectedChannel - 1];
-            var canSend = !!(ch && (ch.CanSend || ch.canSend));
-            if (selectedChannel > 0 && telegramLoggedIn && canSend) {
-                panel.classList.add('visible');
-            } else {
-                panel.classList.remove('visible');
-            }
-        }
+function renderProfilesModal(){
+  var el=document.getElementById('profilesListEl');
+  if(!profiles||!profiles.profiles||!profiles.profiles.length){
+    el.innerHTML='<div style="color:var(--text-dim);padding:14px 0;font-size:13px">'+t('no_profiles')+'</div>';return
+  }
+  var h='';
+  for(var i=0;i<profiles.profiles.length;i++){
+    var p=profiles.profiles[i];
+    var isActive=p.id===activeProfileId;
+    var initial=(p.nickname||p.config.domain||'?').charAt(0).toUpperCase();
+    var shareId='share-'+p.id;
+    h+='<div class="profile-row'+(isActive?' active-profile':'')+'" id="prow-'+p.id+'">';
+    h+='<div class="profile-row-main" onclick="activateProfile(\''+p.id+'\')">';
+    h+='<div class="profile-row-avatar">'+esc(initial)+'</div>';
+    h+='<div class="profile-row-info"><div class="profile-row-name">'+esc(p.nickname||p.config.domain);
+    if(isActive)h+='<span class="active-badge">'+t('active')+'</span>';
+    h+='</div><div class="profile-row-domain">'+esc(p.config.domain)+'</div></div>';
+    h+='<div class="profile-row-btns">';
+    h+='<button class="btn btn-flat btn-sm" onclick="event.stopPropagation();toggleSharePanel(\''+p.id+'\')" title="'+t('share')+'">&#128279;</button>';
+    h+='<button class="btn btn-flat btn-sm" onclick="event.stopPropagation();openProfileEditor(\''+p.id+'\')" title="'+t('edit')+'">&#9998;</button>';
+    h+='</div></div>';
+    // Share panel (hidden by default)
+    h+='<div class="share-panel" id="'+shareId+'" style="display:none">';
+    h+='<div class="share-panel-inner">';
+    h+='<input class="share-uri-input" type="text" readonly id="suri-'+p.id+'" value="">';
+    h+='<button class="btn btn-primary btn-sm" onclick="copyShareUri(\''+p.id+'\')">'+t('copy')+'</button>';
+    h+='<button class="btn btn-flat btn-sm" onclick="toggleSharePanel(\''+p.id+'\')">&#10005;</button>';
+    h+='</div></div>';
+    h+='</div>';
+  }
+  el.innerHTML=h;
+}
 
-        async function loadChannels() {
-            try {
-                var resp = await fetch('/api/channels');
-                channels = await resp.json();
-                if (!channels) channels = [];
-                renderChannels();
-                updateSendPanel();
-                var sr = await fetch('/api/status');
-                var st = await sr.json();
-                telegramLoggedIn = !!st.telegramLoggedIn;
-                if (st.nextFetch) {
-                    serverNextFetch = st.nextFetch;
-                    updateNextFetchDisplay();
-                }
-            } catch (e) {}
-        }
+function toggleSharePanel(id){
+  // Close all first
+  document.querySelectorAll('.share-panel').forEach(function(sp){sp.style.display='none'});
+  var panel=document.getElementById('share-'+id);
+  if(!panel)return;
+  var uri=buildProfileUri(id);
+  var input=document.getElementById('suri-'+id);
+  if(input)input.value=uri||t('no_config');
+  panel.style.display='block';
+}
 
-        async function loadMessages(chNum) {
-            try {
-                var resp = await fetch('/api/messages/' + chNum);
-                if (chNum !== selectedChannel) return;
-                var msgs = await resp.json();
-                if (chNum !== selectedChannel) return;
-                renderMessages(msgs);
-                if (channels[chNum - 1]) {
-                    previousMsgIDs[chNum] = channels[chNum - 1].LastMsgID || channels[chNum - 1].lastMsgID || 0;
-                    renderChannels();
-                }
-            } catch (e) {}
-        }
+function copyShareUri(id){
+  var uri=buildProfileUri(id);
+  if(!uri){showToast(t('no_config'));return}
+  navigator.clipboard.writeText(uri).then(function(){showToast(t('copied'))}).catch(function(){
+    var input=document.getElementById('suri-'+id);if(input){input.select();input.setSelectionRange(0,9999);}
+    showToast(t('copied'));
+  });
+}
 
-        function renderMessages(msgs) {
-            var el = document.getElementById('messages');
-            if (!msgs || msgs.length === 0) {
-                el.innerHTML = '<div class="empty-state"><p>No messages in this channel</p></div>';
-                return;
-            }
-            var html = '';
-            for (var i = 0; i < msgs.length; i++) {
-                var msg = msgs[i];
-                var ts = new Date((msg.Timestamp || msg.timestamp) * 1000);
-                var timeStr = ts.toLocaleTimeString('fa-IR', {hour: '2-digit', minute: '2-digit'});
-                var dateStr = ts.toLocaleDateString('fa-IR', {month: 'short', day: 'numeric'});
-                var id = msg.ID || msg.id;
-                var text = msg.Text || msg.text || '';
-                var mediaHtml = '';
-                var textHtml = escapeHtml(text);
-                var mediaTypes = ['[IMAGE]', '[VIDEO]', '[FILE]', '[AUDIO]', '[STICKER]', '[GIF]', '[POLL]', '[CONTACT]', '[LOCATION]'];
-                for (var m = 0; m < mediaTypes.length; m++) {
-                    if (text.indexOf(mediaTypes[m]) === 0) {
-                        mediaHtml = '<div class="media-tag">' + mediaTypes[m] + '</div>';
-                        textHtml = escapeHtml(text.substring(mediaTypes[m].length).replace(/^\n/, ''));
-                        break;
-                    }
-                }
-                html += '<div class="message">' +
-                    '<div class="message-header">' +
-                    '<span>#' + id + '</span>' +
-                    '<span>' + timeStr + ' ' + dateStr + '</span>' +
-                    '</div>' +
-                    mediaHtml +
-                    '<div class="message-text">' + textHtml + '</div>' +
-                    '</div>';
-            }
-            el.innerHTML = html;
-        }
+async function activateProfile(id){
+  if(id===activeProfileId){closeProfiles();return}
+  try{
+    var r=await fetch('/api/profiles/switch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:id})});
+    if(!r.ok)return;
+    activeProfileId=id;selectedChannel=0;channels=[];    document.getElementById('progressPanel').innerHTML='';    document.getElementById('messages').innerHTML='<div class="empty-state"><p>'+t('switching')+'</p></div>';
+    await loadProfiles();closeProfiles();
+    await loadChannels();
+    if(channels.length>0)await selectChannel(1);
+    else{showInitProgress();await doRefresh()}
+  }catch(e){}
+}
 
-        function addLogLine(line) {
-            var el = document.getElementById('logPanel');
-            var div = document.createElement('div');
-            div.className = 'log-line';
-            var level = 'info';
-            if (typeof line === 'string') {
-                if (line.includes('Invalid passphrase')) {
-                    level = 'error';
-                } else if (line.includes('Error:') || line.includes('error') || line.includes('Error')) {
-                    level = 'error';
-                } else if (line.includes('Warning:') || line.includes('warning') || line.includes('Warning')) {
-                    level = 'warning';
-                } else if (line.includes('OK:') || line.includes('OK') || line.includes('success') || line.includes('done')) {
-                    level = 'success';
-                } else if (line.match(/\[\d+%\]|\d+\s*%/)) {
-                    level = 'progress';
-                    updateProgressDisplay(line);
-                    return;
-                } else if (line.includes('no new messages')) {
-                    level = 'info';
-                }
-            }
-            div.className = 'log-line ' + level;
-            div.textContent = line;
-            el.appendChild(div);
-            el.scrollTop = el.scrollHeight;
-            while (el.children.length > 200) {
-                el.removeChild(el.firstChild);
-            }
-        }
+// ===== IMPORT URI =====
+async function doImportUri(){
+  var errEl=document.getElementById('importError');var okEl=document.getElementById('importSuccess');
+  errEl.style.display='none';okEl.style.display='none';
+  var uri=document.getElementById('importUriInput').value.trim();
+  if(!uri.startsWith('thefeed://')){errEl.textContent=t('invalid_uri');errEl.style.display='block';return}
+  try{
+    var body=uri.substring('thefeed://'.length);
+    var qIdx=body.indexOf('?');var path=qIdx>=0?body.substring(0,qIdx):body;
+    var params=qIdx>=0?body.substring(qIdx+1):'';
+    var parts=path.split('/');
+    var domain=decodeURIComponent(parts[0]||'');var key=decodeURIComponent(parts[1]||'');
+    var resolvers=[];
+    params.split('&').forEach(function(kv){var p=kv.split('=');if(p[0]==='r'&&p[1])resolvers=decodeURIComponent(p[1]).split(',').filter(Boolean)});
+    if(!domain||!key){errEl.textContent=t('uri_missing');errEl.style.display='block';return}
+    if(!resolvers.length)resolvers=['8.8.8.8','1.1.1.1'];
+    var profile={id:'',nickname:domain,config:{domain:domain,key:key,resolvers:resolvers,queryMode:'single',rateLimit:5}};
+    var r=await fetch('/api/profiles',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'create',profile:profile})});
+    if(!r.ok)throw new Error('save failed');
+    okEl.textContent=t('import_success').replace('{d}',domain);okEl.style.display='block';
+    document.getElementById('importUriInput').value='';
+    await loadProfiles();renderProfilesModal();
+  }catch(e){errEl.textContent=t('import_error')+': '+e.message;errEl.style.display='block'}
+}
 
-        function updateProgressDisplay(line) {
-            var match = line.match(/Channel\s+(\d+)\s*(?:\((\d+\/\d+)\))?/);
-            if (!match) return;
-            var channelNum = match[1];
-            var counts = match[2] || '';
-            var percentMatch = line.match(/(\d+)%/);
-            var percent = percentMatch ? parseInt(percentMatch[1]) : 0;
-            var panel = document.getElementById('progressPanel');
-            var itemId = 'progress-current';
-            var item = document.getElementById(itemId);
-            var label = 'Channel ' + channelNum;
-            if (counts) label += ' (' + counts + ')';
-            if (!item) {
-                item = document.createElement('div');
-                item.id = itemId;
-                item.className = 'progress-item';
-                item.innerHTML = '<div class="progress-label">' + label + '</div>' +
-                    '<div class="progress-bar"><div class="progress-fill" style="width:0%"></div></div>';
-                panel.appendChild(item);
-            } else {
-                item.querySelector('.progress-label').textContent = label;
-            }
-            var fill = item.querySelector('.progress-fill');
-            fill.style.width = percent + '%';
-            if (percent >= 100) {
-                setTimeout(function() {
-                    if (item.parentNode) item.parentNode.removeChild(item);
-                }, 1000);
-            }
-        }
+// ===== PROFILE EDITOR =====
+function openProfileEditor(id){
+  editingProfileId=id;
+  document.getElementById('profileEditorModal').classList.add('active');
+  document.getElementById('peError').style.display='none';
+  document.getElementById('peWarning').style.display='none';
+  if(id){
+    document.getElementById('profileEditorTitle').textContent=t('edit_profile');
+    document.getElementById('peDeleteBtn').style.display='';
+    var p=profiles&&profiles.profiles&&profiles.profiles.find(function(x){return x.id===id});
+    if(p){
+      document.getElementById('peNick').value=p.nickname||'';
+      document.getElementById('peDomain').value=p.config.domain||'';
+      document.getElementById('peKey').value=p.config.key||'';
+      document.getElementById('peResolvers').value=(p.config.resolvers||[]).join('\n');
+      document.getElementById('peQueryMode').value=p.config.queryMode||'single';
+      document.getElementById('peRateLimit').value=p.config.rateLimit||5;
+    }
+    document.getElementById('peChannelSection').style.display='';
+    var isActive=id===activeProfileId;
+    if(isActive){
+      document.getElementById('peChannelNote').textContent=t('channel_mgmt_note');
+      document.getElementById('peAddChannelRow').style.display='flex';
+      loadEditorChannels();
+    }else{
+      document.getElementById('peChannelNote').textContent=t('channel_mgmt_inactive');
+      document.getElementById('peAddChannelRow').style.display='none';
+      document.getElementById('peChannelList').innerHTML='';
+    }
+  }else{
+    document.getElementById('profileEditorTitle').textContent=t('new_profile');
+    document.getElementById('peDeleteBtn').style.display='none';
+    document.getElementById('peNick').value='';
+    document.getElementById('peDomain').value='';
+    document.getElementById('peKey').value='';
+    document.getElementById('peResolvers').value='';
+    document.getElementById('peQueryMode').value='single';
+    document.getElementById('peRateLimit').value='5';
+    document.getElementById('peChannelSection').style.display='none';
+  }
+}
+function closeProfileEditor(){document.getElementById('profileEditorModal').classList.remove('active');editingProfileId=null}
 
-        async function doRefresh(quiet) {
-            try {
-                var url = '/api/refresh';
-                if (selectedChannel > 0) {
-                    url += '?channel=' + selectedChannel;
-                }
-                if (quiet) {
-                    url += (url.includes('?') ? '&' : '?') + 'quiet=1';
-                }
-                await fetch(url, {method: 'POST'});
-                // For manual refresh, reload messages after delay as fallback
-                if (!quiet && selectedChannel > 0) {
-                    setTimeout(function() {
-                        loadChannels();
-                        loadMessages(selectedChannel);
-                    }, 3000);
-                }
-            } catch (e) {}
-        }
+async function loadEditorChannels(){
+  var el=document.getElementById('peChannelList');
+  el.innerHTML='<div style="color:var(--text-dim);font-size:12px">'+t('loading')+'</div>';
+  try{
+    var r=await fetch('/api/admin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({command:'list_channels',arg:''})});
+    if(!r.ok)throw new Error(await r.text()||'failed');
+    var data=await r.json();
+    var chans=(data.result||'').split('\n').filter(function(s){return s.trim()});
+    if(!chans.length){el.innerHTML='<div style="color:var(--text-dim);font-size:12px">'+t('no_channels')+'</div>';return}
+    var h='';
+    for(var i=0;i<chans.length;i++){
+      h+='<div class="channel-list-item"><span>'+esc(chans[i])+'</span>';
+      h+='<button class="btn btn-flat btn-sm" style="color:var(--error)" data-ch="'+esc(chans[i])+'" onclick="removeChannelEditor(this.dataset.ch)">'+t('remove')+'</button></div>';
+    }
+    el.innerHTML=h;
+  }catch(e){el.innerHTML='<div style="color:var(--error);font-size:12px">'+esc(e.message)+'</div>'}
+}
 
-        async function sendMessage() {
-            var input = document.getElementById('sendInput');
-            var text = input.value.trim();
-            if (!text || !selectedChannel) return;
-            try {
-                var resp = await fetch('/api/send', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({channel: selectedChannel, text: text})
-                });
-                if (resp.ok) {
-                    input.value = '';
-                    addLogLine('Message sent successfully');
-                } else {
-                    var errText = await resp.text();
-                    addLogLine('Error sending message: ' + errText);
-                }
-            } catch (e) {
-                addLogLine('Error: ' + e.message);
-            }
-        }
+async function addChannelEditor(){
+  var input=document.getElementById('peAddChannelInput');
+  var u=input.value.trim().replace(/^@/,'');if(!u)return;
+  try{
+    var r=await fetch('/api/admin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({command:'add_channel',arg:u})});
+    if(!r.ok){showToast(await r.text()||'Failed');return}
+    input.value='';addLogLine('Channel added: '+u);loadEditorChannels();
+  }catch(e){showToast(e.message)}
+}
 
-        function openSettings() {
-            document.getElementById('settingsModal').classList.add('active');
-            document.getElementById('tgWarning').classList.toggle('visible', !telegramLoggedIn && channels.length > 0);
-            fetch('/api/config').then(function(r) { return r.json(); }).then(function(cfg) {
-                if (cfg.domain) document.getElementById('cfgDomain').value = cfg.domain;
-                if (cfg.key) document.getElementById('cfgKey').value = cfg.key;
-                if (cfg.resolvers) document.getElementById('cfgResolvers').value = cfg.resolvers.join('\n');
-                if (cfg.queryMode) document.getElementById('cfgQueryMode').value = cfg.queryMode;
-                if (typeof cfg.rateLimit === 'number') {
-                    document.getElementById('cfgRateLimit').value = cfg.rateLimit;
-                } else {
-                    document.getElementById('cfgRateLimit').value = 5;
-                }
-                document.getElementById('cfgDebug').checked = cfg.debug !== undefined ? !!cfg.debug : true;
-            }).catch(function() {});
-        }
+async function removeChannelEditor(u){
+  try{
+    var r=await fetch('/api/admin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({command:'remove_channel',arg:u})});
+    if(!r.ok){showToast(await r.text()||'Failed');return}
+    addLogLine('Channel removed: '+u);loadEditorChannels();
+  }catch(e){showToast(e.message)}
+}
 
-        function closeSettings() {
-            document.getElementById('settingsModal').classList.remove('active');
-            document.getElementById('settingsError').style.display = 'none';
-        }
+async function saveProfile(){
+  var errEl=document.getElementById('peError');errEl.style.display='none';
+  var nick=document.getElementById('peNick').value.trim();
+  var domain=document.getElementById('peDomain').value.trim();
+  var key=document.getElementById('peKey').value;
+  var resolvers=document.getElementById('peResolvers').value.trim().split(/[\n,]+/).map(function(s){return s.trim()}).filter(Boolean);
+  if(!domain||!key||!resolvers.length){errEl.textContent=t('resolvers')+' / '+t('domain')+' / '+t('passphrase');errEl.style.display='block';return}
+  var profile={id:editingProfileId||'',nickname:nick||domain,config:{domain:domain,key:key,resolvers:resolvers,queryMode:document.getElementById('peQueryMode').value,rateLimit:parseFloat(document.getElementById('peRateLimit').value)||5}};
+  var action=editingProfileId?'update':'create';
+  var wasFirst=!profiles||!profiles.profiles||profiles.profiles.length===0;
+  try{
+    var r=await fetch('/api/profiles',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:action,profile:profile})});
+    if(!r.ok){errEl.textContent=await r.text();errEl.style.display='block';return}
+    await loadProfiles();
+    closeProfileEditor();
+    if(wasFirst){
+      closeProfiles();
+      document.getElementById('progressPanel').innerHTML='';
+      document.getElementById('messages').innerHTML='<div class="empty-state"><p>'+t('loading')+'</p></div>';
+      showInitProgress();
+    }else{
+      renderProfilesModal();
+      // If we updated the active profile, reload data
+      if(editingProfileId===activeProfileId||!editingProfileId){
+        await loadChannels();
+        if(selectedChannel>0)await loadMessages(selectedChannel);
+      }
+    }
+  }catch(e){errEl.textContent=e.message;errEl.style.display='block'}
+}
 
-        async function saveConfig() {
-            var errEl = document.getElementById('settingsError');
-            errEl.style.display = 'none';
-            var saveBtn = document.querySelector('#settingsModal .btn-primary');
-            if (saveBtn && saveBtn.disabled) return;
-            if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Connecting...'; }
-            var resolversText = document.getElementById('cfgResolvers').value.trim();
-            var resolvers = resolversText.split(/[\n,]+/).map(function(s) { return s.trim(); }).filter(function(s) { return s; });
-            var cfg = {
-                domain: document.getElementById('cfgDomain').value.trim(),
-                key: document.getElementById('cfgKey').value,
-                resolvers: resolvers,
-                queryMode: document.getElementById('cfgQueryMode').value,
-                rateLimit: parseFloat(document.getElementById('cfgRateLimit').value) || 5,
-                debug: document.getElementById('cfgDebug').checked
-            };
-            if (!cfg.domain || !cfg.key || resolvers.length === 0) {
-                errEl.textContent = 'Domain, passphrase, and at least one resolver are required.';
-                errEl.style.display = 'block';
-                return;
-            }
-            try {
-                var resp = await fetch('/api/config', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(cfg)
-                });
-                if (!resp.ok) {
-                    var text = await resp.text();
-                    throw new Error(text);
-                }
-                closeSettings();
-                document.getElementById('statusDot').className = 'status-dot connected';
-                showInitProgress();
-                await doRefresh();
-                await loadChannels();
-                if (channels && channels.length > 0) {
-                    var firstVisible = getFirstVisibleChannel();
-                    if (firstVisible > 0) {
-                        await selectChannel(firstVisible);
-                    }
-                }
-                startAutoRefresh();
-            } catch (e) {
-                errEl.textContent = e.message;
-                errEl.style.display = 'block';
-            } finally {
-                if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save \u0026 Connect'; }
-            }
-        }
+async function deleteEditingProfile(){
+  if(!editingProfileId)return;
+  if(!confirm(t('delete')+'?'))return;
+  try{
+    await fetch('/api/profiles',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'delete',profile:{id:editingProfileId}})});
+    await loadProfiles();closeProfileEditor();
+    if(document.getElementById('profilesModal').classList.contains('active'))renderProfilesModal();
+  }catch(e){}
+}
 
-        function escapeHtml(s) {
-            var div = document.createElement('div');
-            div.appendChild(document.createTextNode(s));
-            return div.innerHTML;
-        }
+// ===== CHANNELS =====
+async function loadChannels(){
+  try{
+    var r=await fetch('/api/channels');channels=await r.json();if(!channels)channels=[];
+    renderChannels();updateSendPanel();
+    var sr=await fetch('/api/status');var st=await sr.json();
+    telegramLoggedIn=!!st.telegramLoggedIn;
+    if(st.nextFetch){serverNextFetch=st.nextFetch;updateNextFetchDisplay()}
+  }catch(e){}
+}
 
-        function openChannelManager() {
-            document.getElementById('channelModal').classList.add('active');
-            document.getElementById('channelManagerError').style.display = 'none';
-            loadChannelManagerList();
-        }
+function renderChannels(){
+  var el=document.getElementById('channelList');
+  if(!channels||!channels.length){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--text-dim);font-size:13px">'+t('no_channels')+'</div>';return}
+  var pubs=[],privs=[];
+  for(var i=0;i<channels.length;i++){var c=channels[i];(c.ChatType===1||c.chatType===1?privs:pubs).push({ch:c,idx:i})}
+  function section(title,items){
+    if(!items.length)return'';var h='';
+    if(title)h+='<div class="channel-section-title">'+esc(title)+'</div>';
+    for(var j=0;j<items.length;j++){
+      var e=items[j],num=e.idx+1;
+      var name=e.ch.Name||e.ch.name||'Channel '+num;
+      var isPriv=e.ch.ChatType===1||e.ch.chatType===1;
+      var active=num===selectedChannel?' active':'';
+      var lastID=e.ch.LastMsgID||e.ch.lastMsgID||0;
+      var badge=(previousMsgIDs[num]>0&&lastID>previousMsgIDs[num]&&num!==selectedChannel)?'<span class="ch-badge">NEW</span>':'';
+      h+='<div class="ch-item'+active+'" data-name="'+esc(name)+'" onclick="selectChannel('+num+')">';
+      h+='<div class="ch-avatar">'+esc(name.charAt(0).toUpperCase())+'</div>';
+      h+='<div class="ch-info"><div class="ch-name">'+esc(name)+(isPriv?'<span class="ch-type-tag">'+t('private')+'</span>':'')+'</div>';
+      h+='<div class="ch-preview">'+badge+'</div></div></div>';
+    }
+    return h;
+  }
+  el.innerHTML=section('',pubs)+section(t('private'),privs);
+}
 
-        function closeChannelManager() {
-            document.getElementById('channelModal').classList.remove('active');
-        }
+async function selectChannel(num){
+  selectedChannel=num;
+  openChat();
+  var ch=channels[num-1];var name=(ch&&(ch.Name||ch.name))||'Channel '+num;
+  document.getElementById('chatName').textContent=name;
+  renderChannels();updateSendPanel();
+  document.getElementById('messages').innerHTML='<div class="empty-state"><p>'+t('loading')+'</p></div>';
+  await loadMessages(num);
+  await doRefresh(true);
+}
 
-        async function loadChannelManagerList() {
-            var el = document.getElementById('channelManagerList');
-            el.innerHTML = '<div style="color:var(--text-dim);font-size:13px;">Loading...</div>';
-            try {
-                var resp = await fetch('/api/admin', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({command: 'list_channels', arg: ''})
-                });
-                if (!resp.ok) {
-                    var errorText = await resp.text();
-                    throw new Error(errorText || 'admin command failed');
-                }
-                var data = await resp.json();
-                var result = data.result || '';
-                var chans = result.split('\n').filter(function(s) { return s.trim(); });
-                if (chans.length === 0) {
-                    el.innerHTML = '<div style="color:var(--text-dim);font-size:13px;">No channels configured on server.</div>';
-                    return;
-                }
-                var html = '';
-                for (var i = 0; i < chans.length; i++) {
-                    html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);">' +
-                        '<span style="font-size:13px;">' + escapeHtml(chans[i]) + '</span>' +
-                        '<button class="btn" style="padding:2px 8px;font-size:11px;color:var(--error);" onclick="removeChannel(\'' + escapeHtml(chans[i]).replace(/'/g, "\\'") + '\')">Remove</button>' +
-                        '</div>';
-                }
-                el.innerHTML = html;
-            } catch (e) {
-                el.innerHTML = '<div style="color:var(--error);font-size:13px;">Error: ' + escapeHtml(e.message) + '</div>';
-            }
-        }
+function updateSendPanel(){
+  var panel=document.getElementById('sendPanel');
+  var ch=channels[selectedChannel-1];
+  var canSend=!!(ch&&(ch.CanSend||ch.canSend));
+  if(selectedChannel>0&&telegramLoggedIn&&canSend)panel.classList.add('visible');
+  else panel.classList.remove('visible');
+}
 
-        async function addChannel() {
-            var input = document.getElementById('addChannelInput');
-            var username = input.value.trim().replace(/^@/, '');
-            var errEl = document.getElementById('channelManagerError');
-            errEl.style.display = 'none';
-            if (!username) return;
-            try {
-                var resp = await fetch('/api/admin', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({command: 'add_channel', arg: username})
-                });
-                if (!resp.ok) {
-                    errEl.textContent = await resp.text() || 'Failed to add channel';
-                    errEl.style.display = 'block';
-                    return;
-                }
-                await resp.json();
-                input.value = '';
-                addLogLine('Channel added: ' + username);
-                loadChannelManagerList();
-            } catch (e) {
-                errEl.textContent = e.message;
-                errEl.style.display = 'block';
-            }
-        }
+// ===== MESSAGES =====
+async function loadMessages(chNum){
+  try{
+    var r=await fetch('/api/messages/'+chNum);if(chNum!==selectedChannel)return;
+    var msgs=await r.json();if(chNum!==selectedChannel)return;
+    renderMessages(msgs);
+    if(channels[chNum-1]){previousMsgIDs[chNum]=channels[chNum-1].LastMsgID||channels[chNum-1].lastMsgID||0;renderChannels()}
+  }catch(e){}
+}
 
-        async function removeChannel(username) {
-            var errEl = document.getElementById('channelManagerError');
-            errEl.style.display = 'none';
-            try {
-                var resp = await fetch('/api/admin', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({command: 'remove_channel', arg: username})
-                });
-                if (!resp.ok) {
-                    errEl.textContent = await resp.text() || 'Failed to remove channel';
-                    errEl.style.display = 'block';
-                    return;
-                }
-                await resp.json();
-                addLogLine('Channel removed: ' + username);
-                loadChannelManagerList();
-            } catch (e) {
-                errEl.textContent = e.message;
-                errEl.style.display = 'block';
-            }
-        }
+function renderMessages(msgs){
+  var el=document.getElementById('messages');
+  if(!msgs||!msgs.length){el.innerHTML='<div class="empty-state"><p>'+t('no_messages')+'</p></div>';return}
+  msgs.sort(function(a,b){return(a.Timestamp||a.timestamp||0)-(b.Timestamp||b.timestamp||0)});
+  var html='',lastDate='';
+  var dateLocale=lang==='fa'?'fa-IR':'en-US';
+  for(var i=0;i<msgs.length;i++){
+    var msg=msgs[i];
+    var ts=new Date((msg.Timestamp||msg.timestamp)*1000);
+    var dateStr=ts.toLocaleDateString(dateLocale,{year:'numeric',month:'long',day:'numeric'});
+    if(dateStr!==lastDate){html+='<div class="msg-date-sep"><span>'+dateStr+'</span></div>';lastDate=dateStr}
+    var timeStr=ts.toLocaleTimeString(dateLocale,{hour:'2-digit',minute:'2-digit'});
+    var id=msg.ID||msg.id;
+    var text=msg.Text||msg.text||'';
+    var mediaHtml='',textHtml=esc(text);
+    var mediaTypes=['[IMAGE]','[VIDEO]','[FILE]','[AUDIO]','[STICKER]','[GIF]','[POLL]','[CONTACT]','[LOCATION]'];
+    for(var m=0;m<mediaTypes.length;m++){
+      if(text.indexOf(mediaTypes[m])===0){
+        mediaHtml='<div class="media-tag">'+mediaTypes[m]+'</div>';
+        textHtml=esc(text.substring(mediaTypes[m].length).replace(/^\n/,''));break
+      }
+    }
+    html+='<div class="msg'+(isPersian(text)?' rtl-msg':'')+'" dir="auto">'+mediaHtml+textHtml+'<div class="msg-meta"><span>#'+id+'</span><span>'+timeStr+'</span></div></div>';
+  }
+  el.innerHTML=html;el.scrollTop=el.scrollHeight;
+}
 
-        function toggleLog() {
-            logVisible = !logVisible;
-            var panel = document.getElementById('logPanel');
-            var icon = document.getElementById('logToggleIcon');
-            if (logVisible) {
-                panel.classList.remove('hidden');
-                icon.textContent = '▼';
-            } else {
-                panel.classList.add('hidden');
-                icon.textContent = '▶';
-            }
-        }
+// ===== LOG =====
+function addLogLine(line){
+  var el=document.getElementById('logPanel');
+  var div=document.createElement('div');
+  var cls='inf';
+  if(typeof line==='string'){
+    if(line.includes('Error:')||line.includes('error')||line.includes('Invalid passphrase'))cls='err';
+    else if(line.includes('Warning:'))cls='warn';
+    else if(line.includes('OK')||line.includes('success')||line.includes('done'))cls='ok';
+    else if(line.match(/\d+%/)){cls='prog';updateProgressDisplay(line);return}
+  }
+  div.className='log-line '+cls;div.textContent=line;
+  el.appendChild(div);el.scrollTop=el.scrollHeight;
+  while(el.children.length>200)el.removeChild(el.firstChild);
+}
 
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' && document.activeElement === document.getElementById('sendInput')) {
-                e.preventDefault();
-                sendMessage();
-            }
-            if (e.key === 'Enter' && document.activeElement === document.getElementById('addChannelInput')) {
-                e.preventDefault();
-                addChannel();
-            }
-        });
+function updateProgressDisplay(line){
+  var match=line.match(/Channel\s+(\d+)/);if(!match)return;
+  var channelNum=parseInt(match[1]);
+  var fracMatch=line.match(/\((\d+)\/(\d+)\)/);
+  var completed=fracMatch?parseInt(fracMatch[1]):0;
+  var total=fracMatch?parseInt(fracMatch[2]):0;
+  var pct=line.match(/(\d+)%/);var percent=pct?parseInt(pct[1]):0;
+  var ch=channels[channelNum-1];
+  var chName=ch&&(ch.Name||ch.name)||'';
+  var label=(fracMatch?(completed+'/'+total):('Channel '+channelNum))+(chName?' ('+chName+')':'');
+  var panel=document.getElementById('progressPanel');
+  var item=document.getElementById('prog-ch-'+channelNum);
+  if(!item){
+    item=document.createElement('div');item.id='prog-ch-'+channelNum;item.className='progress-item';
+    item.innerHTML='<button class="progress-close" onclick="this.parentNode.remove()" title="Dismiss">&times;</button><div class="progress-label"></div><div class="progress-bar"><div class="progress-fill" style="width:0%"></div></div>';
+    panel.appendChild(item);
+  }
+  item.querySelector('.progress-label').textContent=label;
+  item.querySelector('.progress-fill').style.width=percent+'%';
+  if(percent>=100)setTimeout(function(){if(item.parentNode)item.parentNode.removeChild(item)},800);
+}
 
-        window.addEventListener('resize', function() {
-            if (window.innerWidth > 900) {
-                toggleSidebar(true);
-            }
-        });
+function toggleLog(){
+  logVisible=!logVisible;
+  var p=document.getElementById('logPanel');var ic=document.getElementById('logToggleIcon');
+  p.classList.toggle('hidden',!logVisible);
+  ic.innerHTML=logVisible?'&#9660;':'&#9654;';
+}
 
-        init();
-    </script>
+// ===== REFRESH =====
+function showInitProgress(){
+  document.getElementById('progressPanel').innerHTML='';
+  var p=document.getElementById('progressPanel');
+  p.innerHTML='<div class="progress-item"><div class="progress-label">'+t('loading')+'</div><div class="progress-bar"><div class="progress-fill" style="width:30%"></div></div></div>';
+  if(window.innerWidth<=768) openChat();
+}
+function startAutoRefresh(){if(autoRefreshTimer)return;autoRefreshTimer=setInterval(function(){if(selectedChannel>0)doRefresh(true)},600000)}
+function updateNextFetchDisplay(){
+  if(nextFetchInterval)clearInterval(nextFetchInterval);
+  var el=document.getElementById('nextFetchTimer');
+  var info=document.getElementById('nextFetchInfoBtn');
+  if(!serverNextFetch){el.textContent='';if(info)info.style.display='none';return}
+  if(info){info.style.display='';info.title=t('next_fetch_info')}
+  function tick(){var now=Math.floor(Date.now()/1000),d=serverNextFetch-now;
+    if(d<=0){el.textContent='';return}
+    var m=Math.floor(d/60),s=d%60;el.textContent=m+':'+(s<10?'0':'')+s}
+  tick();nextFetchInterval=setInterval(tick,1000);
+}
+async function doRefresh(quiet){
+  try{
+    var url='/api/refresh';
+    if(selectedChannel>0)url+='?channel='+selectedChannel;
+    if(quiet)url+=(url.includes('?')?'&':'?')+'quiet=1';
+    await fetch(url,{method:'POST'});
+    if(!quiet&&selectedChannel>0)setTimeout(function(){loadChannels();loadMessages(selectedChannel)},3000);
+  }catch(e){}
+}
+
+// ===== SEND =====
+async function sendMessage(){
+  var input=document.getElementById('sendInput');var text=input.value.trim();
+  if(!text||!selectedChannel)return;
+  try{
+    var r=await fetch('/api/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({channel:selectedChannel,text:text})});
+    if(r.ok){input.value='';addLogLine('Message sent')}
+    else addLogLine('Error: '+(await r.text()));
+  }catch(e){addLogLine('Error: '+e.message)}
+}
+
+// ===== COPY MSG =====
+function copyMsg(idx){
+  var text=currentMsgTexts[idx];if(text===undefined)return;
+  navigator.clipboard.writeText(text).then(function(){showToast(t('copied'))}).catch(function(){});
+}
+
+// ===== TOAST =====
+function showToast(msg){
+  var el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');
+  setTimeout(function(){el.classList.remove('show')},2200);
+}
+
+// ===== UTILITIES =====
+function esc(s){var d=document.createElement('div');d.appendChild(document.createTextNode(s));return d.innerHTML}
+function isPersian(text){return text&&(text.match(/[\u0600-\u06FF]/g)||[]).length>text.length*0.25}
+
+// ===== EVENTS =====
+document.addEventListener('keydown',function(e){
+  if(e.key==='Enter'&&document.activeElement===document.getElementById('sendInput')){e.preventDefault();sendMessage()}
+  if(e.key==='Enter'&&document.activeElement===document.getElementById('peAddChannelInput')){e.preventDefault();addChannelEditor()}
+  if(e.key==='Escape'){closeSettings();closeProfiles();closeProfileEditor()}
+});
+window.addEventListener('resize',function(){if(window.innerWidth>768)document.getElementById('app').classList.remove('chat-open')});
+
+// Handle thefeed:// URI hash import
+(function(){var h=location.hash;if(h&&h.startsWith('#thefeed://')){document.getElementById('importUriInput').value=decodeURIComponent(h.substring(1));openProfiles();doImportUri()}})();
+
+init();
+</script>
 </body>
 </html>

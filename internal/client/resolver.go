@@ -42,8 +42,18 @@ func (rc *ResolverChecker) SetLogFunc(fn LogFunc) {
 // An initial check runs immediately; subsequent checks happen every 10 minutes.
 // ctx controls the lifetime — cancel it to stop the checker.
 func (rc *ResolverChecker) Start(ctx context.Context) {
+	rc.StartAndNotify(ctx, nil)
+}
+
+// StartAndNotify is like Start but calls onFirstDone (if non-nil) after the
+// initial health-check pass finishes, before the periodic ticker begins.
+// This lets callers sequence "DNS scan → metadata fetch" without races.
+func (rc *ResolverChecker) StartAndNotify(ctx context.Context, onFirstDone func()) {
 	go func() {
 		rc.CheckNow()
+		if onFirstDone != nil {
+			onFirstDone()
+		}
 		ticker := time.NewTicker(30 * time.Minute)
 		defer ticker.Stop()
 		for {

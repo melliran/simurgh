@@ -65,7 +65,7 @@ class MainActivity : ComponentActivity() {
         webView.webViewClient = object : WebViewClient() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 if (url != null && url.startsWith("http://127.0.0.1")) {
-                    txtStatus.text = "Connected"
+                    txtStatus.text = ""
                     retryCount = 0
                 }
             }
@@ -128,7 +128,7 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         private const val MAX_RETRIES = 25
-        private const val RETRY_DELAY_MS = 2000L
-        private const val INITIAL_DELAY_MS = 5000L
+        private const val RETRY_DELAY_MS = 10000L
+        private const val INITIAL_DELAY_MS = 15000L
     }
 }

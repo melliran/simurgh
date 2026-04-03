@@ -233,7 +233,9 @@ func TestE2E_WrongPassphrase(t *testing.T) {
 		t.Fatalf("create fetcher: %v", err)
 	}
 
-	_, err = fetcher.FetchMetadata(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	_, err = fetcher.FetchMetadata(ctx)
 	if err == nil {
 		t.Fatal("expected error with wrong passphrase, got nil")
 	}
@@ -789,5 +791,303 @@ func TestE2E_AdminNoManage(t *testing.T) {
 	_, err = fetcher.SendAdminCommand(ctx, protocol.AdminCmdListChannels, "")
 	if err == nil {
 		t.Error("expected error when server has allow-manage disabled, got nil")
+	}
+}
+
+// --- Profiles API Tests ---
+
+func startWebServer(t *testing.T) (string, *web.Server) {
+	t.Helper()
+	dataDir := t.TempDir()
+	port := findFreePort(t, "tcp")
+	srv, err := web.New(dataDir, port, "")
+	if err != nil {
+		t.Fatalf("create web server: %v", err)
+	}
+	go srv.Run()
+	time.Sleep(200 * time.Millisecond)
+	return fmt.Sprintf("http://127.0.0.1:%d", port), srv
+}
+
+func postJSON(t *testing.T, url, body string) *http.Response {
+	t.Helper()
+	resp, err := http.Post(url, "application/json", strings.NewReader(body))
+	if err != nil {
+		t.Fatalf("POST %s: %v", url, err)
+	}
+	return resp
+}
+
+func getJSON(t *testing.T, url string) *http.Response {
+	t.Helper()
+	resp, err := http.Get(url)
+	if err != nil {
+		t.Fatalf("GET %s: %v", url, err)
+	}
+	return resp
+}
+
+func decodeJSON(t *testing.T, resp *http.Response) map[string]any {
+	t.Helper()
+	defer resp.Body.Close()
+	var m map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&m); err != nil {
+		t.Fatalf("decode JSON: %v", err)
+	}
+	return m
+}
+
+func TestE2E_Profiles_GetEmpty(t *testing.T) {
+	base, _ := startWebServer(t)
+
+	resp := getJSON(t, base+"/api/profiles")
+	m := decodeJSON(t, resp)
+	if resp.StatusCode != 200 {
+		t.Fatalf("expected 200, got %d", resp.StatusCode)
+	}
+	if m["profiles"] != nil {
+		t.Errorf("expected profiles=null on fresh server, got %v", m["profiles"])
+	}
+}
+
+func TestE2E_Profiles_CreateAndGet(t *testing.T) {
+	base, _ := startWebServer(t)
+
+	body := `{"action":"create","profile":{"id":"","nickname":"Test","config":{"domain":"test.example","key":"mypass","resolvers":["8.8.8.8"],"queryMode":"single","rateLimit":5}}}`
+	resp := postJSON(t, base+"/api/profiles", body)
+	m := decodeJSON(t, resp)
+	if resp.StatusCode != 200 {
+		t.Fatalf("create profile: expected 200, got %d", resp.StatusCode)
+	}
+	if m["ok"] != true {
+		t.Errorf("expected ok=true, got %v", m["ok"])
+	}
+
+	// GET should now return the created profile
+	resp2 := getJSON(t, base+"/api/profiles")
+	m2 := decodeJSON(t, resp2)
+	profs, ok := m2["profiles"].([]any)
+	if !ok || len(profs) != 1 {
+		t.Fatalf("expected 1 profile, got %v", m2["profiles"])
+	}
+	p := profs[0].(map[string]any)
+	if p["nickname"] != "Test" {
+		t.Errorf("nickname = %v, want Test", p["nickname"])
+	}
+	cfg := p["config"].(map[string]any)
+	if cfg["domain"] != "test.example" {
+		t.Errorf("domain = %v, want test.example", cfg["domain"])
+	}
+}
+
+func TestE2E_Profiles_CreateSetsActive(t *testing.T) {
+	base, _ := startWebServer(t)
+
+	body := `{"action":"create","profile":{"id":"","nickname":"First","config":{"domain":"first.example","key":"k1","resolvers":["1.1.1.1"],"queryMode":"single","rateLimit":0}}}`
+	resp := postJSON(t, base+"/api/profiles", body)
+	decodeJSON(t, resp)
+
+	resp2 := getJSON(t, base+"/api/profiles")
+	m2 := decodeJSON(t, resp2)
+	active, _ := m2["active"].(string)
+	profs := m2["profiles"].([]any)
+	firstID := profs[0].(map[string]any)["id"].(string)
+	if active != firstID {
+		t.Errorf("first profile should be active, active=%q id=%q", active, firstID)
+	}
+}
+
+func TestE2E_Profiles_UpdateNickname(t *testing.T) {
+	base, _ := startWebServer(t)
+
+	// Create
+	createBody := `{"action":"create","profile":{"id":"","nickname":"OldName","config":{"domain":"upd.example","key":"k1","resolvers":["1.1.1.1"],"queryMode":"single","rateLimit":0}}}`
+	postJSON(t, base+"/api/profiles", createBody).Body.Close()
+
+	// Get the ID
+	m := decodeJSON(t, getJSON(t, base+"/api/profiles"))
+	id := m["profiles"].([]any)[0].(map[string]any)["id"].(string)
+
+	updateBody := fmt.Sprintf(`{"action":"update","profile":{"id":%q,"nickname":"NewName","config":{"domain":"upd.example","key":"k1","resolvers":["1.1.1.1"],"queryMode":"single","rateLimit":0}}}`, id)
+	resp := postJSON(t, base+"/api/profiles", updateBody)
+	if resp.StatusCode != 200 {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("update: expected 200, got %d body=%s", resp.StatusCode, body)
+	}
+	resp.Body.Close()
+
+	m2 := decodeJSON(t, getJSON(t, base+"/api/profiles"))
+	nick := m2["profiles"].([]any)[0].(map[string]any)["nickname"].(string)
+	if nick != "NewName" {
+		t.Errorf("nickname after update = %q, want NewName", nick)
+	}
+}
+
+func TestE2E_Profiles_Delete(t *testing.T) {
+	base, _ := startWebServer(t)
+
+	postJSON(t, base+"/api/profiles", `{"action":"create","profile":{"id":"","nickname":"ToDelete","config":{"domain":"del.example","key":"k","resolvers":["1.1.1.1"],"queryMode":"single","rateLimit":0}}}`).Body.Close()
+	m := decodeJSON(t, getJSON(t, base+"/api/profiles"))
+	id := m["profiles"].([]any)[0].(map[string]any)["id"].(string)
+
+	delBody := fmt.Sprintf(`{"action":"delete","profile":{"id":%q}}`, id)
+	resp := postJSON(t, base+"/api/profiles", delBody)
+	if resp.StatusCode != 200 {
+		t.Fatalf("delete: expected 200, got %d", resp.StatusCode)
+	}
+	resp.Body.Close()
+
+	m2 := decodeJSON(t, getJSON(t, base+"/api/profiles"))
+	if profs := m2["profiles"]; profs != nil {
+		if list, ok := profs.([]any); ok && len(list) != 0 {
+			t.Errorf("expected 0 profiles after delete, got %d", len(list))
+		}
+	}
+}
+
+func TestE2E_Profiles_Switch(t *testing.T) {
+	base, _ := startWebServer(t)
+
+	postJSON(t, base+"/api/profiles", `{"action":"create","profile":{"id":"","nickname":"A","config":{"domain":"a.example","key":"k","resolvers":["1.1.1.1"],"queryMode":"single","rateLimit":0}}}`).Body.Close()
+	postJSON(t, base+"/api/profiles", `{"action":"create","profile":{"id":"","nickname":"B","config":{"domain":"b.example","key":"k","resolvers":["1.1.1.1"],"queryMode":"single","rateLimit":0}}}`).Body.Close()
+
+	m := decodeJSON(t, getJSON(t, base+"/api/profiles"))
+	profs := m["profiles"].([]any)
+	if len(profs) < 2 {
+		t.Fatalf("expected 2 profiles, got %d", len(profs))
+	}
+	idB := profs[1].(map[string]any)["id"].(string)
+
+	switchBody := fmt.Sprintf(`{"id":%q}`, idB)
+	resp := postJSON(t, base+"/api/profiles/switch", switchBody)
+	if resp.StatusCode != 200 {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("switch: expected 200, got %d body=%s", resp.StatusCode, body)
+	}
+	resp.Body.Close()
+
+	m2 := decodeJSON(t, getJSON(t, base+"/api/profiles"))
+	if m2["active"] != idB {
+		t.Errorf("active after switch = %v, want %q", m2["active"], idB)
+	}
+}
+
+func TestE2E_Profiles_InvalidAction(t *testing.T) {
+	base, _ := startWebServer(t)
+
+	resp := postJSON(t, base+"/api/profiles", `{"action":"bogus","profile":{}}`)
+	defer resp.Body.Close()
+	if resp.StatusCode != 400 {
+		t.Errorf("bogus action: expected 400, got %d", resp.StatusCode)
+	}
+}
+
+func TestE2E_Profiles_SwitchNotFound(t *testing.T) {
+	base, _ := startWebServer(t)
+
+	resp := postJSON(t, base+"/api/profiles/switch", `{"id":"nonexistent-id"}`)
+	defer resp.Body.Close()
+	if resp.StatusCode != 400 && resp.StatusCode != 404 {
+		t.Errorf("switch nonexistent: expected 400/404, got %d", resp.StatusCode)
+	}
+}
+
+// --- Settings API Tests ---
+
+func TestE2E_Settings_GetDefault(t *testing.T) {
+	base, _ := startWebServer(t)
+
+	resp := getJSON(t, base+"/api/settings")
+	m := decodeJSON(t, resp)
+	if resp.StatusCode != 200 {
+		t.Fatalf("GET /api/settings: expected 200, got %d", resp.StatusCode)
+	}
+	// fontSize defaults to 0 (use browser default), debug defaults to false
+	if _, ok := m["fontSize"]; !ok {
+		t.Error("expected 'fontSize' key in settings response")
+	}
+	if _, ok := m["debug"]; !ok {
+		t.Error("expected 'debug' key in settings response")
+	}
+}
+
+func TestE2E_Settings_SaveAndRead(t *testing.T) {
+	base, _ := startWebServer(t)
+
+	resp := postJSON(t, base+"/api/settings", `{"fontSize":16,"debug":true}`)
+	m := decodeJSON(t, resp)
+	if resp.StatusCode != 200 {
+		t.Fatalf("POST /api/settings: expected 200, got %d", resp.StatusCode)
+	}
+	if m["ok"] != true {
+		t.Errorf("expected ok=true, got %v", m["ok"])
+	}
+
+	m2 := decodeJSON(t, getJSON(t, base+"/api/settings"))
+	if m2["fontSize"] != float64(16) {
+		t.Errorf("fontSize = %v, want 16", m2["fontSize"])
+	}
+	if m2["debug"] != true {
+		t.Errorf("debug = %v, want true", m2["debug"])
+	}
+}
+
+func TestE2E_Settings_FontSizeClamped(t *testing.T) {
+	base, _ := startWebServer(t)
+
+	// Below minimum
+	postJSON(t, base+"/api/settings", `{"fontSize":1}`).Body.Close()
+	m := decodeJSON(t, getJSON(t, base+"/api/settings"))
+	if want := float64(0); m["fontSize"] != want {
+		t.Errorf("fontSize below min: got %v, want %v", m["fontSize"], want)
+	}
+
+	// Above maximum (24)
+	postJSON(t, base+"/api/settings", `{"fontSize":99}`).Body.Close()
+	m2 := decodeJSON(t, getJSON(t, base+"/api/settings"))
+	if m2["fontSize"] != float64(24) {
+		t.Errorf("fontSize above max: got %v, want 24", m2["fontSize"])
+	}
+}
+
+func TestE2E_Settings_Persistence(t *testing.T) {
+	dataDir := t.TempDir()
+
+	port1 := findFreePort(t, "tcp")
+	srv1, err := web.New(dataDir, port1, "")
+	if err != nil {
+		t.Fatalf("create web server: %v", err)
+	}
+	go srv1.Run()
+	time.Sleep(200 * time.Millisecond)
+	base1 := fmt.Sprintf("http://127.0.0.1:%d", port1)
+	postJSON(t, base1+"/api/settings", `{"fontSize":18,"debug":false}`).Body.Close()
+
+	port2 := findFreePort(t, "tcp")
+	srv2, err := web.New(dataDir, port2, "")
+	if err != nil {
+		t.Fatalf("create second web server: %v", err)
+	}
+	go srv2.Run()
+	time.Sleep(200 * time.Millisecond)
+	base2 := fmt.Sprintf("http://127.0.0.1:%d", port2)
+
+	m := decodeJSON(t, getJSON(t, base2+"/api/settings"))
+	if m["fontSize"] != float64(18) {
+		t.Errorf("persisted fontSize = %v, want 18", m["fontSize"])
+	}
+}
+
+func TestE2E_Settings_MethodNotAllowed(t *testing.T) {
+	base, _ := startWebServer(t)
+
+	req, _ := http.NewRequest(http.MethodDelete, base+"/api/settings", nil)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("DELETE /api/settings: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 405 {
+		t.Errorf("expected 405, got %d", resp.StatusCode)
 	}
 }
