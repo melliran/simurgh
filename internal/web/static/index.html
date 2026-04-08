@@ -1,1346 +1,2439 @@
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>thefeed</title>
-<style>
-@font-face{font-family:'Vazirmatn';src:url('/static/Vazirmatn-Regular.woff2') format('woff2');font-weight:normal;font-style:normal;font-display:swap}
-:root{
-  --bg:#17212b;--bg2:#0e1621;--sidebar-bg:#0e1621;--surface:#182533;--surface2:#1d2b3a;
-  --border:#1c2938;--accent:#3390ec;--accent-hover:#2b7dd6;--text:#f5f5f5;--text-dim:#8b9eb0;
-  --success:#4fae4e;--error:#e53935;--send-color:#3390ec;--msg-in:#182533;
-  --hover:#1e2c3a;--font-size:14px;
-}
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Vazirmatn',system-ui,-apple-system,sans-serif;background:var(--bg2);color:var(--text);height:100vh;overflow:hidden;font-size:var(--font-size)}
-button{cursor:pointer;font-family:inherit}
-input,textarea,select{font-family:inherit}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>thefeed</title>
+  <style>
+    @font-face {
+      font-family: 'Vazirmatn';
+      src: url('/static/Vazirmatn-Regular.woff2') format('woff2');
+      font-weight: normal;
+      font-style: normal;
+      font-display: swap
+    }
 
-/* ===== LAYOUT ===== */
-.app{display:flex;height:100vh;direction:ltr}
-.sidebar{width:280px;min-width:280px;background:var(--sidebar-bg);display:flex;flex-direction:column;border-right:1px solid var(--border);overflow:hidden}
-.chat-area{flex:1;display:flex;flex-direction:column;background:var(--bg);overflow:hidden;position:relative}
+    :root {
+      --bg: #17212b;
+      --bg2: #0e1621;
+      --sidebar-bg: #0e1621;
+      --surface: #182533;
+      --surface2: #1d2b3a;
+      --border: #1c2938;
+      --accent: #3390ec;
+      --accent-hover: #2b7dd6;
+      --text: #f5f5f5;
+      --text-dim: #8b9eb0;
+      --success: #4fae4e;
+      --error: #e53935;
+      --send-color: #3390ec;
+      --msg-in: #182533;
+      --hover: #1e2c3a;
+      --font-size: 14px;
+    }
 
-/* ===== SIDEBAR HEADER ===== */
-.sidebar-header{padding:10px 12px;display:flex;flex-direction:column;gap:8px;border-bottom:1px solid var(--border)}
-.sidebar-header-top{display:flex;align-items:center;gap:8px;min-height:40px}
-.profile-btn{flex:1;display:flex;align-items:center;gap:8px;padding:7px 12px;border:none;border-radius:20px;background:var(--surface);color:var(--text);font-size:13px;font-weight:500;text-align:left;transition:background .15s;overflow:hidden}
-.profile-btn:hover{background:var(--hover)}
-.profile-btn-avatar{width:24px;height:24px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.profile-btn-name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.profile-btn-arrow{font-size:10px;color:var(--text-dim);flex-shrink:0;display:flex;align-items:center;gap:2px}
-.profile-btn-arrow .plus{font-size:16px;font-weight:700;color:var(--accent)}
-.sidebar-search{padding:7px 12px;border:none;border-radius:18px;background:var(--surface);color:var(--text);font-size:13px;outline:none;width:100%}
-.sidebar-search::placeholder{color:var(--text-dim)}
-.icon-btn{width:36px;height:36px;border:none;background:none;color:var(--text-dim);font-size:17px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.icon-btn:hover{background:var(--hover);color:var(--text)}
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box
+    }
 
-/* ===== CHANNEL LIST ===== */
-.channel-list{flex:1;overflow-y:auto}
-.channel-section-title{padding:8px 14px 4px;font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px}
-.ch-item{display:flex;align-items:center;padding:10px 14px;cursor:pointer;gap:10px;contain:content}
-.ch-item:hover{background:var(--hover)}
-.ch-item.active{background:var(--accent)}
-.ch-item.active .ch-name,.ch-item.active .ch-preview{color:#fff}
-.ch-avatar{width:44px;height:44px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:17px;color:var(--text-dim);flex-shrink:0;font-weight:600}
-.ch-item.active .ch-avatar{background:rgba(255,255,255,.2)}
-.ch-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
-.ch-name{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ch-preview{font-size:12px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ch-badge{background:#fff;color:var(--accent);font-size:10px;padding:1px 6px;border-radius:10px;min-width:18px;text-align:center;flex-shrink:0;font-weight:700}
-.ch-item.active .ch-badge{background:rgba(255,255,255,.3);color:#fff}
-.ch-type-tag{font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(192,132,252,.15);color:#c084fc;margin-left:4px}
+    body {
+      font-family: 'Vazirmatn', system-ui, -apple-system, sans-serif;
+      background: var(--bg2);
+      color: var(--text);
+      height: 100vh;
+      overflow: hidden;
+      font-size: var(--font-size)
+    }
 
-/* ===== RTL MESSAGES ===== */
-.msg.rtl-msg{direction:rtl}
+    button {
+      cursor: pointer;
+      font-family: inherit
+    }
 
-/* ===== SIDEBAR FOOTER ===== */
-.sidebar-footer{padding:8px 14px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:center;gap:10px;font-size:10px;color:var(--text-dim)}
-.sidebar-footer a{color:var(--accent);text-decoration:none}
-.sidebar-footer a:hover{text-decoration:underline}
-.free-iran{color:var(--success);font-weight:700}
+    input,
+    textarea,
+    select {
+      font-family: inherit
+    }
 
-/* ===== CHAT HEADER ===== */
-.chat-header{display:flex;align-items:center;padding:8px 14px;background:var(--surface);border-bottom:1px solid var(--border);min-height:54px;gap:10px}
-.back-btn{display:none;width:36px;height:36px;border:none;background:none;color:var(--text);font-size:20px;border-radius:50%;align-items:center;justify-content:center;flex-shrink:0}
-.back-btn:hover{background:var(--hover)}
-.chat-header-info{flex:1;min-width:0}
-.chat-header-name{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.chat-header-sub{font-size:11px;color:var(--text-dim)}
-.chat-header-actions{display:flex;gap:4px;align-items:center}
-.next-fetch-label{font-size:10px;color:var(--text-dim);padding:0 2px}
-.next-fetch-info{font-size:11px;color:var(--text-dim);cursor:help;line-height:1}
+    /* ===== LAYOUT ===== */
+    .app {
+      display: flex;
+      height: 100vh;
+      direction: ltr
+    }
 
-/* ===== MESSAGES ===== */
-.messages{flex:1;overflow-y:auto;padding:10px 14px;display:flex;flex-direction:column;gap:4px;direction:ltr}
-.msg-date-sep{text-align:center;padding:8px 0;font-size:12px;color:var(--text-dim)}
-.msg-date-sep span{background:rgba(0,0,0,.3);padding:3px 10px;border-radius:10px}
-.msg-gap-sep{text-align:center;padding:6px 0;font-size:11px;color:var(--error)}
-.msg-gap-sep span{background:rgba(229,57,53,.12);padding:3px 10px;border-radius:10px;border:1px dashed rgba(229,57,53,.3)}
-.msg{max-width:min(82%,580px);padding:7px 10px 4px;border-radius:12px;line-height:1.7;word-break:break-word;white-space:pre-wrap;font-size:inherit;background:var(--msg-in);border:1px solid rgba(255,255,255,.07);align-self:flex-start;border-bottom-left-radius:4px}
-.msg-meta{display:flex;justify-content:flex-end;gap:6px;font-size:10px;color:var(--text-dim);margin-top:2px;direction:ltr}
-.media-tag{display:block;padding:2px 6px;border-radius:4px;background:rgba(51,144,236,.15);color:var(--accent);font-size:11px;margin-bottom:6px}
+    .sidebar {
+      width: 280px;
+      min-width: 280px;
+      background: var(--sidebar-bg);
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--border);
+      overflow: hidden
+    }
 
-/* ===== SEND PANEL ===== */
-.send-panel{display:none;padding:8px 14px;background:var(--surface);border-top:1px solid var(--border);gap:8px;align-items:flex-end}
-.send-panel.visible{display:flex}
-.send-input{flex:1;padding:8px 14px;border:none;border-radius:18px;background:var(--bg);color:var(--text);font-size:14px;outline:none;resize:none;max-height:120px;min-height:36px}
-.send-btn{width:40px;height:40px;border:none;border-radius:50%;background:var(--send-color);color:#fff;font-size:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.send-btn:hover{background:var(--accent-hover)}
+    .chat-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg);
+      overflow: hidden;
+      position: relative
+    }
 
-/* ===== PROGRESS ===== */
-.progress-panel{background:var(--surface);border-top:1px solid var(--border);overflow:hidden;font-size:12px;padding:0 14px;direction:ltr;text-align:left;color:var(--text-dim)}
-.progress-panel:empty{display:none}
-.progress-item{padding:5px 0;position:relative;padding-right:22px}
-.progress-close{position:absolute;right:0;top:4px;background:none;border:none;color:var(--text-dim);font-size:13px;cursor:pointer;line-height:1;padding:0 2px}
-.progress-close:hover{color:var(--text)}
-.progress-label{font-size:11px;margin-bottom:2px;color:var(--text-dim)}
-.progress-bar{width:100%;height:3px;background:var(--border);border-radius:2px;overflow:hidden}
-.progress-fill{height:100%;background:var(--accent);transition:width .2s}
-@keyframes prog-pulse{0%,100%{opacity:1}50%{opacity:.4}}
-@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-@keyframes badge-pulse{0%,100%{box-shadow:0 0 0 0 rgba(51,144,236,.4)}50%{box-shadow:0 0 0 4px rgba(51,144,236,0)}}
-.refresh-has-new{animation:badge-pulse 2s ease-in-out infinite;color:var(--accent)!important}
-.msg-copy-btn{background:none;border:none;color:var(--text-dim);font-size:14px;cursor:pointer;padding:0 3px;line-height:1;flex-shrink:0;opacity:.45;transition:opacity .15s}.msg-copy-btn:hover{opacity:1}
+    /* ===== SIDEBAR HEADER ===== */
+    .sidebar-header {
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      border-bottom: 1px solid var(--border)
+    }
 
-/* ===== SCROLL-TO-BOTTOM ===== */
-.scroll-down-btn{position:absolute;bottom:70px;right:16px;width:36px;height:36px;border:none;border-radius:50%;background:var(--surface2);color:var(--text);font-size:18px;display:none;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,.45);z-index:10;cursor:pointer;border:1px solid var(--border)}
-.scroll-down-btn.visible{display:flex}
-.scroll-down-btn:hover{background:var(--hover)}
-.scroll-down-badge{position:absolute;top:-4px;right:-4px;background:var(--accent);color:#fff;font-size:9px;font-weight:700;min-width:16px;height:16px;border-radius:8px;display:none;align-items:center;justify-content:center;padding:0 3px}
-.scroll-down-badge.visible{display:flex}
+    .sidebar-header-top {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 40px
+    }
 
-/* ===== LOG ===== */
-.log-toggle{display:flex;align-items:center;justify-content:space-between;padding:3px 14px;background:var(--bg2);cursor:pointer;user-select:none;font-size:10px;color:var(--text-dim);letter-spacing:.5px;border-top:1px solid var(--border)}
-.log-toggle:hover{color:var(--text)}
-.log-panel{height:110px;background:var(--bg2);overflow-y:auto;font-size:11px;font-family:monospace;padding:4px 14px;direction:ltr;text-align:left;color:var(--text-dim)}
-.log-panel.hidden{display:none;height:0}
-.log-line{padding:1px 0;line-height:1.3}
-.log-line.err{color:#e53935}.log-line.ok{color:#4fae4e}.log-line.warn{color:#f97316}.log-line.prog{color:#fbbf24}.log-line.inf{color:#60a5fa}
+    .profile-btn {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 12px;
+      border: none;
+      border-radius: 20px;
+      background: var(--surface);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 500;
+      text-align: left;
+      transition: background .15s;
+      overflow: hidden
+    }
 
-/* ===== EMPTY STATE ===== */
-.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text-dim);gap:14px;text-align:center;padding:20px}
-.empty-state .big-icon{font-size:52px;opacity:.25}
-.empty-state p{font-size:14px;max-width:240px}
+    .profile-btn:hover {
+      background: var(--hover)
+    }
 
-/* ===== MODALS ===== */
-.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:100;justify-content:center;align-items:center}
-.modal-overlay.active{display:flex}
-.modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;width:440px;max-width:95vw;max-height:90vh;overflow-y:auto;direction:rtl}
-html[dir=ltr] .modal{direction:ltr}
-.modal h2{margin-bottom:16px;font-size:17px;font-weight:600}
-.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap}
+    .profile-btn-avatar {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0
+    }
 
-/* ===== FORMS ===== */
-.form-group{margin-bottom:12px}
-.form-group label{display:block;margin-bottom:4px;font-size:12px;color:var(--text-dim)}
-.form-group input,.form-group textarea,.form-group select{width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;direction:ltr;text-align:left;outline:none}
-.form-group input:focus,.form-group textarea:focus,.form-group select:focus{border-color:var(--accent)}
-.form-group textarea{min-height:65px;resize:vertical}
-.form-group .row{display:flex;gap:8px;align-items:center}
-.form-group .row input[type=checkbox]{width:auto;accent-color:var(--accent)}
-.form-group .row label{margin:0;cursor:pointer;font-size:13px;color:var(--text)}
+    .profile-btn-name {
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis
+    }
 
-/* ===== BUTTONS ===== */
-.btn{padding:7px 16px;border:none;border-radius:8px;font-size:13px;cursor:pointer;transition:background .15s;font-family:inherit}
-.btn-flat{background:transparent;color:var(--accent)}
-.btn-flat:hover{background:var(--hover)}
-.btn-primary{background:var(--accent);color:#fff}
-.btn-primary:hover{background:var(--accent-hover)}
-.btn-danger{background:var(--error);color:#fff}
-.btn-danger:hover{background:#c62828}
-.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text)}
-.btn-outline:hover{background:var(--hover)}
-.btn-sm{padding:4px 10px;font-size:11px}
+    .profile-btn-arrow {
+      font-size: 10px;
+      color: var(--text-dim);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: 2px
+    }
 
-/* ===== SETTINGS MODAL ===== */
-.font-size-row{display:flex;align-items:center;gap:10px;margin-bottom:14px}
-.font-size-row label{font-size:12px;color:var(--text-dim);white-space:nowrap}
-.font-size-row input[type=range]{flex:1;accent-color:var(--accent)}
-.font-size-val{font-size:12px;color:var(--text);min-width:28px;text-align:center;background:var(--bg);padding:2px 6px;border-radius:4px;border:1px solid var(--border)}
-.lang-row{display:flex;gap:8px;margin-top:4px}
-.lang-btn{flex:1;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text-dim);font-size:13px;transition:all .15s}
-.lang-btn:hover{background:var(--hover)}
-.lang-btn.active-lang{border-color:var(--accent);background:rgba(51,144,236,.12);color:var(--accent);font-weight:600}
+    .profile-btn-arrow .plus {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--accent)
+    }
 
-/* ===== PROFILES MODAL ===== */
-.profile-row{display:flex;flex-direction:column;border-bottom:1px solid var(--border)}
-.profile-row-main{display:flex;align-items:center;gap:10px;padding:10px;cursor:pointer;transition:background .1s}
-.profile-row-main:hover{background:var(--hover)}
-.profile-row.active-profile .profile-row-main{background:rgba(51,144,236,.08)}
-.profile-row-avatar{width:40px;height:40px;border-radius:50%;background:var(--accent);color:#fff;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.profile-row.active-profile .profile-row-avatar{background:var(--success)}
-.profile-row-info{flex:1;min-width:0}
-.profile-row-name{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.profile-row-domain{font-size:11px;color:var(--text-dim)}
-.profile-row-btns{display:flex;gap:4px;flex-shrink:0}
-.share-panel{padding:8px 10px;background:var(--bg);border-top:1px solid var(--border)}
-.share-panel-inner{display:flex;gap:6px;align-items:center}
-.share-uri-input{flex:1;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--accent);font-family:monospace;font-size:11px;direction:ltr;text-align:left;outline:none}
-.active-badge{display:inline-block;font-size:9px;padding:1px 6px;border-radius:8px;background:var(--success);color:#fff;margin-left:6px;vertical-align:middle}
-html[dir=ltr] .active-badge{margin-left:0;margin-right:6px}
-.section-divider{border:none;border-top:1px solid var(--border);margin:14px 0}
-.info-note{background:rgba(51,144,236,.08);border:1px solid rgba(51,144,236,.2);border-radius:6px;padding:8px 12px;font-size:12px;color:var(--text-dim);margin-bottom:10px;line-height:1.5}
-.tg-warning{background:rgba(229,57,53,.1);border:1px solid rgba(229,57,53,.3);border-radius:6px;padding:8px 12px;font-size:11px;color:#ef9a9a;margin-bottom:12px;display:none}
-.tg-warning.visible{display:block}
-.import-section{margin-top:14px}
-.import-row{display:flex;gap:8px}
-.import-row input{flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:12px;direction:ltr;text-align:left;outline:none}
-.import-row input:focus{border-color:var(--accent)}
+    .sidebar-search {
+      padding: 7px 12px;
+      border: none;
+      border-radius: 18px;
+      background: var(--surface);
+      color: var(--text);
+      font-size: 13px;
+      outline: none;
+      width: 100%
+    }
 
-/* ===== CHANNEL EDITOR IN PROFILE ===== */
-.channel-editor-row{display:flex;gap:6px;align-items:center;margin-bottom:8px}
-.channel-editor-row input{flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;direction:ltr;text-align:left;outline:none}
-.channel-editor-row input:focus{border-color:var(--accent)}
-.channel-list-item{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)}
-.channel-list-item:last-child{border-bottom:none}
-.channel-list-item span{font-size:13px;direction:ltr}
+    .sidebar-search::placeholder {
+      color: var(--text-dim)
+    }
 
-/* ===== TOAST ===== */
-#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:#333;color:#fff;padding:8px 18px;border-radius:20px;font-size:13px;opacity:0;transition:all .25s;z-index:999;pointer-events:none;white-space:nowrap}
-#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+    .icon-btn {
+      width: 36px;
+      height: 36px;
+      border: none;
+      background: none;
+      color: var(--text-dim);
+      font-size: 17px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0
+    }
 
-/* ===== MOBILE ===== */
-@media(max-width:768px){
-  .app{position:relative;overflow:hidden}
-  .sidebar{position:absolute;top:0;left:0;right:0;bottom:0;width:100%;z-index:2;transform:translateX(0);transition:transform .25s ease}
-  .chat-area{position:absolute;top:0;left:0;right:0;bottom:0;z-index:1;transform:translateX(100%);transition:transform .25s ease}
-  .app.chat-open .sidebar{transform:translateX(-100%)}
-  .app.chat-open .chat-area{transform:translateX(0)}
-  .back-btn{display:flex}
-  .msg{max-width:90%}
-  .modal{width:100%;max-width:100%;max-height:100%;border-radius:0;border-left:none;border-right:none;border-bottom:none;margin-top:auto;align-self:flex-end}
-  .modal-overlay.active{align-items:flex-end}
-}
+    .icon-btn:hover {
+      background: var(--hover);
+      color: var(--text)
+    }
 
-::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
-</style>
+    /* ===== CHANNEL LIST ===== */
+    .channel-list {
+      flex: 1;
+      overflow-y: auto
+    }
+
+    .channel-section-title {
+      padding: 8px 14px 4px;
+      font-size: 11px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: .5px
+    }
+
+    .ch-item {
+      display: flex;
+      align-items: center;
+      padding: 10px 14px;
+      cursor: pointer;
+      gap: 10px;
+      contain: content
+    }
+
+    .ch-item:hover {
+      background: var(--hover)
+    }
+
+    .ch-item.active {
+      background: var(--accent)
+    }
+
+    .ch-item.active .ch-name,
+    .ch-item.active .ch-preview {
+      color: #fff
+    }
+
+    .ch-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: var(--surface2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 17px;
+      color: var(--text-dim);
+      flex-shrink: 0;
+      font-weight: 600
+    }
+
+    .ch-item.active .ch-avatar {
+      background: rgba(255, 255, 255, .2)
+    }
+
+    .ch-info {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 3px
+    }
+
+    .ch-name {
+      font-size: 14px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis
+    }
+
+    .ch-preview {
+      font-size: 12px;
+      color: var(--text-dim);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis
+    }
+
+    .ch-badge {
+      background: #fff;
+      color: var(--accent);
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 10px;
+      min-width: 18px;
+      text-align: center;
+      flex-shrink: 0;
+      font-weight: 700
+    }
+
+    .ch-item.active .ch-badge {
+      background: rgba(255, 255, 255, .3);
+      color: #fff
+    }
+
+    .ch-type-tag {
+      font-size: 9px;
+      padding: 1px 5px;
+      border-radius: 3px;
+      background: rgba(192, 132, 252, .15);
+      color: #c084fc;
+      margin-left: 4px
+    }
+
+    /* ===== RTL MESSAGES ===== */
+    .msg.rtl-msg {
+      direction: rtl
+    }
+
+    /* ===== SIDEBAR FOOTER ===== */
+    .sidebar-footer {
+      padding: 8px 14px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      font-size: 10px;
+      color: var(--text-dim)
+    }
+
+    .sidebar-footer a {
+      color: var(--accent);
+      text-decoration: none
+    }
+
+    .sidebar-footer a:hover {
+      text-decoration: underline
+    }
+
+    .free-iran {
+      color: var(--success);
+      font-weight: 700
+    }
+
+    /* ===== CHAT HEADER ===== */
+    .chat-header {
+      display: flex;
+      align-items: center;
+      padding: 8px 14px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      min-height: 54px;
+      gap: 10px
+    }
+
+    .back-btn {
+      display: none;
+      width: 36px;
+      height: 36px;
+      border: none;
+      background: none;
+      color: var(--text);
+      font-size: 20px;
+      border-radius: 50%;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0
+    }
+
+    .back-btn:hover {
+      background: var(--hover)
+    }
+
+    .chat-header-info {
+      flex: 1;
+      min-width: 0
+    }
+
+    .chat-header-name {
+      font-size: 15px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis
+    }
+
+    .chat-header-sub {
+      font-size: 11px;
+      color: var(--text-dim)
+    }
+
+    .chat-header-actions {
+      display: flex;
+      gap: 4px;
+      align-items: center
+    }
+
+    .next-fetch-label {
+      font-size: 10px;
+      color: var(--text-dim);
+      padding: 0 2px
+    }
+
+    .next-fetch-info {
+      font-size: 11px;
+      color: var(--text-dim);
+      cursor: help;
+      line-height: 1
+    }
+
+    /* ===== MESSAGES ===== */
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      direction: ltr
+    }
+
+    .msg-date-sep {
+      text-align: center;
+      padding: 8px 0;
+      font-size: 12px;
+      color: var(--text-dim)
+    }
+
+    .msg-date-sep span {
+      background: rgba(0, 0, 0, .3);
+      padding: 3px 10px;
+      border-radius: 10px
+    }
+
+    .msg-gap-sep {
+      text-align: center;
+      padding: 6px 0;
+      font-size: 11px;
+      color: var(--error)
+    }
+
+    .msg-gap-sep span {
+      background: rgba(229, 57, 53, .12);
+      padding: 3px 10px;
+      border-radius: 10px;
+      border: 1px dashed rgba(229, 57, 53, .3)
+    }
+
+    .msg {
+      max-width: min(82%, 580px);
+      padding: 7px 10px 4px;
+      border-radius: 12px;
+      line-height: 1.7;
+      word-break: break-word;
+      white-space: pre-wrap;
+      font-size: inherit;
+      background: var(--msg-in);
+      border: 1px solid rgba(255, 255, 255, .07);
+      align-self: flex-start;
+      border-bottom-left-radius: 4px
+    }
+
+    .msg-meta {
+      display: flex;
+      justify-content: flex-end;
+      gap: 6px;
+      font-size: 10px;
+      color: var(--text-dim);
+      margin-top: 2px;
+      direction: ltr
+    }
+
+    .media-tag {
+      display: block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(51, 144, 236, .15);
+      color: var(--accent);
+      font-size: 11px;
+      margin-bottom: 6px
+    }
+
+    /* ===== SEND PANEL ===== */
+    .send-panel {
+      display: none;
+      padding: 8px 14px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      gap: 8px;
+      align-items: flex-end
+    }
+
+    .send-panel.visible {
+      display: flex
+    }
+
+    .send-input {
+      flex: 1;
+      padding: 8px 14px;
+      border: none;
+      border-radius: 18px;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      outline: none;
+      resize: none;
+      max-height: 120px;
+      min-height: 36px
+    }
+
+    .send-btn {
+      width: 40px;
+      height: 40px;
+      border: none;
+      border-radius: 50%;
+      background: var(--send-color);
+      color: #fff;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0
+    }
+
+    .send-btn:hover {
+      background: var(--accent-hover)
+    }
+
+    /* ===== PROGRESS ===== */
+    .progress-panel {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      overflow: hidden;
+      font-size: 12px;
+      padding: 0 14px;
+      direction: ltr;
+      text-align: left;
+      color: var(--text-dim)
+    }
+
+    .progress-panel:empty {
+      display: none
+    }
+
+    .progress-item {
+      padding: 5px 0;
+      position: relative;
+      padding-right: 22px
+    }
+
+    .progress-close {
+      position: absolute;
+      right: 0;
+      top: 4px;
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      font-size: 13px;
+      cursor: pointer;
+      line-height: 1;
+      padding: 0 2px
+    }
+
+    .progress-close:hover {
+      color: var(--text)
+    }
+
+    .progress-label {
+      font-size: 11px;
+      margin-bottom: 2px;
+      color: var(--text-dim)
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 3px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--accent);
+      transition: width .2s
+    }
+
+    @keyframes prog-pulse {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: .4
+      }
+    }
+
+    @keyframes spin {
+      from {
+        transform: rotate(0deg)
+      }
+
+      to {
+        transform: rotate(360deg)
+      }
+    }
+
+    @keyframes badge-pulse {
+
+      0%,
+      100% {
+        box-shadow: 0 0 0 0 rgba(51, 144, 236, .4)
+      }
+
+      50% {
+        box-shadow: 0 0 0 4px rgba(51, 144, 236, 0)
+      }
+    }
+
+    .refresh-has-new {
+      animation: badge-pulse 2s ease-in-out infinite;
+      color: var(--accent) !important
+    }
+
+    .msg-copy-btn {
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      font-size: 14px;
+      cursor: pointer;
+      padding: 0 3px;
+      line-height: 1;
+      flex-shrink: 0;
+      opacity: .45;
+      transition: opacity .15s
+    }
+
+    .msg-copy-btn:hover {
+      opacity: 1
+    }
+
+    /* ===== SCROLL-TO-BOTTOM ===== */
+    .scroll-down-btn {
+      position: absolute;
+      bottom: 70px;
+      right: 16px;
+      width: 36px;
+      height: 36px;
+      border: none;
+      border-radius: 50%;
+      background: var(--surface2);
+      color: var(--text);
+      font-size: 18px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, .45);
+      z-index: 10;
+      cursor: pointer;
+      border: 1px solid var(--border)
+    }
+
+    .scroll-down-btn.visible {
+      display: flex
+    }
+
+    .scroll-down-btn:hover {
+      background: var(--hover)
+    }
+
+    .scroll-down-badge {
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 9px;
+      font-weight: 700;
+      min-width: 16px;
+      height: 16px;
+      border-radius: 8px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 0 3px
+    }
+
+    .scroll-down-badge.visible {
+      display: flex
+    }
+
+    /* ===== LOG ===== */
+    .log-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 3px 14px;
+      background: var(--bg2);
+      cursor: pointer;
+      user-select: none;
+      font-size: 10px;
+      color: var(--text-dim);
+      letter-spacing: .5px;
+      border-top: 1px solid var(--border)
+    }
+
+    .log-toggle:hover {
+      color: var(--text)
+    }
+
+    .log-panel {
+      height: 110px;
+      background: var(--bg2);
+      overflow-y: auto;
+      font-size: 11px;
+      font-family: monospace;
+      padding: 4px 14px;
+      direction: ltr;
+      text-align: left;
+      color: var(--text-dim)
+    }
+
+    .log-panel.hidden {
+      display: none;
+      height: 0
+    }
+
+    .log-line {
+      padding: 1px 0;
+      line-height: 1.3
+    }
+
+    .log-line.err {
+      color: #e53935
+    }
+
+    .log-line.ok {
+      color: #4fae4e
+    }
+
+    .log-line.warn {
+      color: #f97316
+    }
+
+    .log-line.prog {
+      color: #fbbf24
+    }
+
+    .log-line.inf {
+      color: #60a5fa
+    }
+
+    /* ===== EMPTY STATE ===== */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--text-dim);
+      gap: 14px;
+      text-align: center;
+      padding: 20px
+    }
+
+    .empty-state .big-icon {
+      font-size: 52px;
+      opacity: .25
+    }
+
+    .empty-state p {
+      font-size: 14px;
+      max-width: 240px
+    }
+
+    /* ===== MODALS ===== */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .65);
+      z-index: 100;
+      justify-content: center;
+      align-items: center
+    }
+
+    .modal-overlay.active {
+      display: flex
+    }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      width: 440px;
+      max-width: 95vw;
+      max-height: 90vh;
+      overflow-y: auto;
+      direction: rtl
+    }
+
+    html[dir=ltr] .modal {
+      direction: ltr
+    }
+
+    .modal h2 {
+      margin-bottom: 16px;
+      font-size: 17px;
+      font-weight: 600
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      margin-top: 16px;
+      flex-wrap: wrap
+    }
+
+    /* ===== FORMS ===== */
+    .form-group {
+      margin-bottom: 12px
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 12px;
+      color: var(--text-dim)
+    }
+
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 13px;
+      direction: ltr;
+      text-align: left;
+      outline: none
+    }
+
+    .form-group input:focus,
+    .form-group textarea:focus,
+    .form-group select:focus {
+      border-color: var(--accent)
+    }
+
+    .form-group textarea {
+      min-height: 65px;
+      resize: vertical
+    }
+
+    .form-group .row {
+      display: flex;
+      gap: 8px;
+      align-items: center
+    }
+
+    .form-group .row input[type=checkbox] {
+      width: auto;
+      accent-color: var(--accent)
+    }
+
+    .form-group .row label {
+      margin: 0;
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--text)
+    }
+
+    /* ===== BUTTONS ===== */
+    .btn {
+      padding: 7px 16px;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background .15s;
+      font-family: inherit
+    }
+
+    .btn-flat {
+      background: transparent;
+      color: var(--accent)
+    }
+
+    .btn-flat:hover {
+      background: var(--hover)
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hover)
+    }
+
+    .btn-danger {
+      background: var(--error);
+      color: #fff
+    }
+
+    .btn-danger:hover {
+      background: #c62828
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text)
+    }
+
+    .btn-outline:hover {
+      background: var(--hover)
+    }
+
+    .btn-sm {
+      padding: 4px 10px;
+      font-size: 11px
+    }
+
+    /* ===== SETTINGS MODAL ===== */
+    .font-size-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px
+    }
+
+    .font-size-row label {
+      font-size: 12px;
+      color: var(--text-dim);
+      white-space: nowrap
+    }
+
+    .font-size-row input[type=range] {
+      flex: 1;
+      accent-color: var(--accent)
+    }
+
+    .font-size-val {
+      font-size: 12px;
+      color: var(--text);
+      min-width: 28px;
+      text-align: center;
+      background: var(--bg);
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid var(--border)
+    }
+
+    .lang-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 4px
+    }
+
+    .lang-btn {
+      flex: 1;
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg);
+      color: var(--text-dim);
+      font-size: 13px;
+      transition: all .15s
+    }
+
+    .lang-btn:hover {
+      background: var(--hover)
+    }
+
+    .lang-btn.active-lang {
+      border-color: var(--accent);
+      background: rgba(51, 144, 236, .12);
+      color: var(--accent);
+      font-weight: 600
+    }
+
+    /* ===== PROFILES MODAL ===== */
+    .profile-row {
+      display: flex;
+      flex-direction: column;
+      border-bottom: 1px solid var(--border)
+    }
+
+    .profile-row-main {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px;
+      cursor: pointer;
+      transition: background .1s
+    }
+
+    .profile-row-main:hover {
+      background: var(--hover)
+    }
+
+    .profile-row.active-profile .profile-row-main {
+      background: rgba(51, 144, 236, .08)
+    }
+
+    .profile-row-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      font-size: 16px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0
+    }
+
+    .profile-row.active-profile .profile-row-avatar {
+      background: var(--success)
+    }
+
+    .profile-row-info {
+      flex: 1;
+      min-width: 0
+    }
+
+    .profile-row-name {
+      font-size: 14px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis
+    }
+
+    .profile-row-domain {
+      font-size: 11px;
+      color: var(--text-dim)
+    }
+
+    .profile-row-btns {
+      display: flex;
+      gap: 4px;
+      flex-shrink: 0
+    }
+
+    .share-panel {
+      padding: 8px 10px;
+      background: var(--bg);
+      border-top: 1px solid var(--border)
+    }
+
+    .share-panel-inner {
+      display: flex;
+      gap: 6px;
+      align-items: center
+    }
+
+    .share-uri-input {
+      flex: 1;
+      padding: 6px 8px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--surface);
+      color: var(--accent);
+      font-family: monospace;
+      font-size: 11px;
+      direction: ltr;
+      text-align: left;
+      outline: none
+    }
+
+    .active-badge {
+      display: inline-block;
+      font-size: 9px;
+      padding: 1px 6px;
+      border-radius: 8px;
+      background: var(--success);
+      color: #fff;
+      margin-left: 6px;
+      vertical-align: middle
+    }
+
+    html[dir=ltr] .active-badge {
+      margin-left: 0;
+      margin-right: 6px
+    }
+
+    .section-divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 14px 0
+    }
+
+    .info-note {
+      background: rgba(51, 144, 236, .08);
+      border: 1px solid rgba(51, 144, 236, .2);
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 12px;
+      color: var(--text-dim);
+      margin-bottom: 10px;
+      line-height: 1.5
+    }
+
+    .tg-warning {
+      background: rgba(229, 57, 53, .1);
+      border: 1px solid rgba(229, 57, 53, .3);
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 11px;
+      color: #ef9a9a;
+      margin-bottom: 12px;
+      display: none
+    }
+
+    .tg-warning.visible {
+      display: block
+    }
+
+    .import-section {
+      margin-top: 14px
+    }
+
+    .import-row {
+      display: flex;
+      gap: 8px
+    }
+
+    .import-row input {
+      flex: 1;
+      padding: 7px 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 12px;
+      direction: ltr;
+      text-align: left;
+      outline: none
+    }
+
+    .import-row input:focus {
+      border-color: var(--accent)
+    }
+
+    /* ===== CHANNEL EDITOR IN PROFILE ===== */
+    .channel-editor-row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      margin-bottom: 8px
+    }
+
+    .channel-editor-row input {
+      flex: 1;
+      padding: 7px 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 13px;
+      direction: ltr;
+      text-align: left;
+      outline: none
+    }
+
+    .channel-editor-row input:focus {
+      border-color: var(--accent)
+    }
+
+    .channel-list-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0;
+      border-bottom: 1px solid var(--border)
+    }
+
+    .channel-list-item:last-child {
+      border-bottom: none
+    }
+
+    .channel-list-item span {
+      font-size: 13px;
+      direction: ltr
+    }
+
+    /* ===== TOAST ===== */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: #333;
+      color: #fff;
+      padding: 8px 18px;
+      border-radius: 20px;
+      font-size: 13px;
+      opacity: 0;
+      transition: all .25s;
+      z-index: 999;
+      pointer-events: none;
+      white-space: nowrap
+    }
+
+    #toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0)
+    }
+
+    /* ===== MOBILE ===== */
+    @media(max-width:768px) {
+      .app {
+        position: relative;
+        overflow: hidden
+      }
+
+      .sidebar {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100%;
+        z-index: 2;
+        transform: translateX(0);
+        transition: transform .25s ease
+      }
+
+      .chat-area {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 1;
+        transform: translateX(100%);
+        transition: transform .25s ease
+      }
+
+      .app.chat-open .sidebar {
+        transform: translateX(-100%)
+      }
+
+      .app.chat-open .chat-area {
+        transform: translateX(0)
+      }
+
+      .back-btn {
+        display: flex
+      }
+
+      .msg {
+        max-width: 90%
+      }
+
+      .modal {
+        width: 100%;
+        max-width: 100%;
+        max-height: 100%;
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+        border-bottom: none;
+        margin-top: auto;
+        align-self: flex-end
+      }
+
+      .modal-overlay.active {
+        align-items: flex-end
+      }
+    }
+
+    ::-webkit-scrollbar {
+      width: 4px
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 2px
+    }
+  </style>
 </head>
+
 <body>
-<div class="app" id="app">
+  <div class="app" id="app">
 
-  <!-- SIDEBAR -->
-  <div class="sidebar" id="sidebar">
-    <div class="sidebar-header">
-      <div class="sidebar-header-top">
-        <button class="profile-btn" id="profileBtn" onclick="openProfiles()">
-          <div class="profile-btn-avatar" id="profileBtnAvatar">?</div>
-          <span class="profile-btn-name" id="profileBtnName" data-i18n="set_up">Set Up</span>
-          <span class="profile-btn-arrow"><span class="plus">+</span>&#9660;</span>
-        </button>
-        <button class="icon-btn" onclick="openSettings()" title="Settings" data-i18n-title="settings">&#9881;</button>
-        <button class="icon-btn" onclick="jumpToLog()" title="LOG">&#128220;</button>
+    <!-- SIDEBAR -->
+    <div class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-header-top">
+          <button class="profile-btn" id="profileBtn" onclick="openProfiles()">
+            <div class="profile-btn-avatar" id="profileBtnAvatar">?</div>
+            <span class="profile-btn-name" id="profileBtnName" data-i18n="set_up">Set Up</span>
+            <span class="profile-btn-arrow"><span class="plus">+</span>&#9660;</span>
+          </button>
+          <button class="icon-btn" onclick="openSettings()" title="Settings" data-i18n-title="settings">&#9881;</button>
+          <button class="icon-btn" onclick="jumpToLog()" title="LOG">&#128220;</button>
+        </div>
+        <input class="sidebar-search" id="channelSearch" type="text" data-i18n-ph="search" placeholder="Search..."
+          oninput="filterChannels()">
       </div>
-      <input class="sidebar-search" id="channelSearch" type="text" data-i18n-ph="search" placeholder="Search..." oninput="filterChannels()">
-    </div>
-    <div class="channel-list" id="channelList">
-      <div style="padding:20px;text-align:center;color:var(--text-dim);font-size:13px" data-i18n="no_channels">No channels yet</div>
-    </div>
-    <div class="sidebar-footer">
-      TELEGRAM: <a href="https://t.me/networkti" target="_blank">@networkti</a>
-      &middot;
-      <a href="https://github.com/sartoopjj/thefeed" target="_blank">GitHub</a>
-    </div>
-  </div>
-
-  <!-- CHAT AREA -->
-  <div class="chat-area">
-    <div class="chat-header">
-      <button class="back-btn" onclick="openSidebar()">&#8592;</button>
-      <div class="chat-header-info">
-        <div class="chat-header-name" id="chatName">thefeed</div>
+      <div class="channel-list" id="channelList">
+        <div style="padding:20px;text-align:center;color:var(--text-dim);font-size:13px" data-i18n="no_channels">No
+          channels yet</div>
       </div>
-      <div class="chat-header-actions">
-        <span class="next-fetch-label" id="nextFetchTimer"></span><span class="next-fetch-info" id="nextFetchInfoBtn" style="display:none" data-i18n-title="next_fetch_info" title="" onclick="showToast(t('next_fetch_info'))" tabindex="0">ⓘ</span>
-        <button class="icon-btn" id="refreshBtn" onclick="doRefreshUI()" title="Refresh" style="width:40px;height:40px;font-size:20px">&#8635;</button>
+      <div class="sidebar-footer">
+        TELEGRAM: <a href="https://t.me/networkti" target="_blank">@networkti</a>
+        &middot;
+        <a href="https://github.com/sartoopjj/thefeed" target="_blank">GitHub</a>
       </div>
     </div>
-    <div class="messages" id="messages">
-      <div class="empty-state">
-        <div class="big-icon">&#128225;</div>
-        <p data-i18n="configure_server">Configure a server to start reading</p>
-        <button class="btn btn-primary" onclick="openProfiles()" data-i18n="set_up">Set Up</button>
+
+    <!-- CHAT AREA -->
+    <div class="chat-area">
+      <div class="chat-header">
+        <button class="back-btn" onclick="openSidebar()">&#8592;</button>
+        <div class="chat-header-info">
+          <div class="chat-header-name" id="chatName">thefeed</div>
+        </div>
+        <div class="chat-header-actions">
+          <span class="next-fetch-label" id="nextFetchTimer"></span><span class="next-fetch-info" id="nextFetchInfoBtn"
+            style="display:none" data-i18n-title="next_fetch_info" title="" onclick="showToast(t('next_fetch_info'))"
+            tabindex="0">ⓘ</span>
+          <button class="icon-btn" id="refreshBtn" onclick="doRefreshUI()" title="Refresh"
+            style="width:40px;height:40px;font-size:20px">&#8635;</button>
+        </div>
+      </div>
+      <div class="messages" id="messages">
+        <div class="empty-state">
+          <div class="big-icon">&#128225;</div>
+          <p data-i18n="configure_server">Configure a server to start reading</p>
+          <button class="btn btn-primary" onclick="openProfiles()" data-i18n="set_up">Set Up</button>
+        </div>
+      </div>
+      <div class="send-panel" id="sendPanel">
+        <input class="send-input" id="sendInput" data-i18n-ph="write_message" placeholder="Write a message..."
+          maxlength="4000">
+        <button class="send-btn" onclick="sendMessage()">&#10148;</button>
+      </div>
+      <button class="scroll-down-btn" id="scrollDownBtn" onclick="scrollToBottom()" title="Jump to latest">&#8595;<span
+          class="scroll-down-badge" id="scrollDownBadge"></span></button>
+      <div class="progress-panel" id="progressPanel"></div>
+      <div class="log-toggle" onclick="toggleLog()"><span>LOG</span><span id="logToggleIcon">&#9654;</span></div>
+      <div class="log-panel hidden" id="logPanel"></div>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div id="toast"></div>
+
+  <!-- ===== SAVED RESOLVERS POPUP ===== -->
+  <div class="modal-overlay" id="savedResolversModal">
+    <div class="modal" style="max-width:380px">
+      <h2 data-i18n="saved_resolvers_title">Quick Start</h2>
+      <p id="savedResolversMsg" style="font-size:13px;color:var(--text-dim);margin-bottom:16px;line-height:1.6"></p>
+      <div class="modal-actions">
+        <button class="btn btn-flat" onclick="savedResolversSkip()" data-i18n="saved_resolvers_skip">Skip</button>
+        <button class="btn btn-outline" onclick="savedResolversRescan()" data-i18n="saved_resolvers_rescan">Scan
+          Again</button>
+        <button class="btn btn-primary" onclick="savedResolversUseNow()" data-i18n="saved_resolvers_use">Use
+          Now</button>
       </div>
     </div>
-    <div class="send-panel" id="sendPanel">
-      <input class="send-input" id="sendInput" data-i18n-ph="write_message" placeholder="Write a message..." maxlength="4000">
-      <button class="send-btn" onclick="sendMessage()">&#10148;</button>
-    </div>
-    <button class="scroll-down-btn" id="scrollDownBtn" onclick="scrollToBottom()" title="Jump to latest">&#8595;<span class="scroll-down-badge" id="scrollDownBadge"></span></button>
-    <div class="progress-panel" id="progressPanel"></div>
-    <div class="log-toggle" onclick="toggleLog()"><span>LOG</span><span id="logToggleIcon">&#9654;</span></div>
-    <div class="log-panel hidden" id="logPanel"></div>
   </div>
-</div>
 
-<!-- TOAST -->
-<div id="toast"></div>
-
-<!-- ===== SAVED RESOLVERS POPUP ===== -->
-<div class="modal-overlay" id="savedResolversModal">
-<div class="modal" style="max-width:380px">
-  <h2 data-i18n="saved_resolvers_title">Quick Start</h2>
-  <p id="savedResolversMsg" style="font-size:13px;color:var(--text-dim);margin-bottom:16px;line-height:1.6"></p>
-  <div class="modal-actions">
-    <button class="btn btn-flat" onclick="savedResolversSkip()" data-i18n="saved_resolvers_skip">Skip</button>
-    <button class="btn btn-outline" onclick="savedResolversRescan()" data-i18n="saved_resolvers_rescan">Scan Again</button>
-    <button class="btn btn-primary" onclick="savedResolversUseNow()" data-i18n="saved_resolvers_use">Use Now</button>
-  </div>
-</div>
-</div>
-
-<!-- ===== SETTINGS MODAL ===== -->
-<div class="modal-overlay" id="settingsModal">
-<div class="modal">
-  <h2 data-i18n="settings">&#9881; Settings</h2>
-  <div class="font-size-row">
-    <label data-i18n="font_size">Font Size</label>
-    <input type="range" id="fontSizeSlider" min="11" max="22" value="14" oninput="previewFontSize(this.value)">
-    <span class="font-size-val" id="fontSizeVal">14</span>
-  </div>
-  <div class="form-group">
-    <div class="row">
-      <input type="checkbox" id="cfgDebug">
-      <label for="cfgDebug" data-i18n="debug_mode">Debug mode</label>
-    </div>
-  </div>
-  <div class="form-group">
-    <label data-i18n="language">Language</label>
-    <div class="lang-row">
-      <button class="lang-btn" id="langFa" onclick="setLang('fa')">&#1601;&#1575;&#1585;&#1587;&#1740;</button>
-      <button class="lang-btn" id="langEn" onclick="setLang('en')">English</button>
+  <!-- ===== SETTINGS MODAL ===== -->
+  <div class="modal-overlay" id="settingsModal">
+    <div class="modal">
+      <h2 data-i18n="settings">&#9881; Settings</h2>
+      <div class="font-size-row">
+        <label data-i18n="font_size">Font Size</label>
+        <input type="range" id="fontSizeSlider" min="11" max="22" value="14" oninput="previewFontSize(this.value)">
+        <span class="font-size-val" id="fontSizeVal">14</span>
+      </div>
+      <div class="form-group">
+        <div class="row">
+          <input type="checkbox" id="cfgDebug">
+          <label for="cfgDebug" data-i18n="debug_mode">Debug mode</label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label data-i18n="language">Language</label>
+        <div class="lang-row">
+          <button class="lang-btn" id="langFa" onclick="setLang('fa')">&#1601;&#1575;&#1585;&#1587;&#1740;</button>
+          <button class="lang-btn" id="langEn" onclick="setLang('en')">English</button>
+        </div>
+      </div>
+      <div
+        style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);font-size:11px;color:var(--text-dim);display:flex;align-items:center;justify-content:space-between">
+        <span data-i18n="version">Version</span>
+        <span id="appVersionEl" style="font-family:monospace;color:var(--text)">-</span>
+      </div>
+      <div style="margin-top:10px;display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:12px;color:var(--text-dim)" data-i18n="clear_cache">Clear Cache</span>
+        <button class="btn btn-flat" onclick="clearCache()"
+          style="font-size:11px;padding:4px 12px;color:var(--danger,#e74c3c)" data-i18n="clear_cache">Clear
+          Cache</button>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-flat" onclick="closeSettings()" data-i18n="cancel">Cancel</button>
+        <button class="btn btn-primary" onclick="saveSettings()" data-i18n="save">Save</button>
+      </div>
     </div>
   </div>
-  <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);font-size:11px;color:var(--text-dim);display:flex;align-items:center;justify-content:space-between">
-    <span data-i18n="version">Version</span>
-    <span id="appVersionEl" style="font-family:monospace;color:var(--text)">-</span>
-  </div>
-  <div style="margin-top:10px;display:flex;align-items:center;justify-content:space-between">
-    <span style="font-size:12px;color:var(--text-dim)" data-i18n="clear_cache">Clear Cache</span>
-    <button class="btn btn-flat" onclick="clearCache()" style="font-size:11px;padding:4px 12px;color:var(--danger,#e74c3c)" data-i18n="clear_cache">Clear Cache</button>
-  </div>
-  <div class="modal-actions">
-    <button class="btn btn-flat" onclick="closeSettings()" data-i18n="cancel">Cancel</button>
-    <button class="btn btn-primary" onclick="saveSettings()" data-i18n="save">Save</button>
-  </div>
-</div>
-</div>
 
-<!-- ===== PROFILES MODAL ===== -->
-<div class="modal-overlay" id="profilesModal">
-<div class="modal">
-  <h2 data-i18n="profiles">Profiles</h2>
-  <!-- Import URI at top -->
-  <div class="import-section" style="margin-top:0;margin-bottom:14px;padding:10px 12px;background:var(--bg);border-radius:8px;border:1px solid var(--border)">
-    <div style="font-size:12px;color:var(--text-dim);margin-bottom:6px" data-i18n="import_uri_label">Import URI</div>
-    <div class="import-row">
-      <input id="importUriInput" placeholder="thefeed://..." data-i18n-ph="import_uri_ph">
-      <button class="btn btn-primary btn-sm" onclick="doImportUri()" data-i18n="import">Import</button>
+  <!-- ===== PROFILES MODAL ===== -->
+  <div class="modal-overlay" id="profilesModal">
+    <div class="modal">
+      <h2 data-i18n="profiles">Profiles</h2>
+      <!-- Import URI at top -->
+      <div class="import-section"
+        style="margin-top:0;margin-bottom:14px;padding:10px 12px;background:var(--bg);border-radius:8px;border:1px solid var(--border)">
+        <div style="font-size:12px;color:var(--text-dim);margin-bottom:6px" data-i18n="import_uri_label">Import URI
+        </div>
+        <div class="import-row">
+          <input id="importUriInput" placeholder="thefeed://..." data-i18n-ph="import_uri_ph">
+          <button class="btn btn-primary btn-sm" onclick="doImportUri()" data-i18n="import">Import</button>
+        </div>
+        <div id="importError" style="color:var(--error);font-size:12px;display:none;margin-top:6px"></div>
+        <div id="importSuccess" style="color:var(--success);font-size:12px;display:none;margin-top:6px"></div>
+      </div>
+      <div id="profilesListEl"></div>
+      <div class="modal-actions">
+        <button class="btn btn-flat" onclick="closeProfiles()" data-i18n="close">Close</button>
+        <button class="btn btn-outline" onclick="openProfileEditor(null)" data-i18n="add_manual">✎ Create
+          Manually</button>
+      </div>
     </div>
-    <div id="importError" style="color:var(--error);font-size:12px;display:none;margin-top:6px"></div>
-    <div id="importSuccess" style="color:var(--success);font-size:12px;display:none;margin-top:6px"></div>
   </div>
-  <div id="profilesListEl"></div>
-  <div class="modal-actions">
-    <button class="btn btn-flat" onclick="closeProfiles()" data-i18n="close">Close</button>
-    <button class="btn btn-outline" onclick="openProfileEditor(null)" data-i18n="add_manual">✎ Create Manually</button>
-  </div>
-</div>
-</div>
 
-<!-- ===== PROFILE EDITOR MODAL ===== -->
-<div class="modal-overlay" id="profileEditorModal">
-<div class="modal">
-  <h2 id="profileEditorTitle" data-i18n="new_profile">New Profile</h2>
-  <div id="peWarning" class="tg-warning"></div>
-  <div class="form-group"><label data-i18n="nickname">Nickname</label><input id="peNick" placeholder="My Server"></div>
-  <div class="form-group"><label data-i18n="domain">Domain</label><input id="peDomain" placeholder="t.example.com"></div>
-  <div class="form-group"><label data-i18n="passphrase">Passphrase</label><input type="password" id="peKey" placeholder="..."></div>
-  <div class="form-group"><label data-i18n="resolvers">Resolvers</label><textarea id="peResolvers" placeholder="8.8.8.8&#10;1.1.1.1"></textarea></div>
-  <div class="form-group"><label data-i18n="query_mode">Query Mode</label>
-    <select id="peQueryMode">
-      <option value="single">Single label (base32)</option>
-      <option value="double">Multi-label (hex)</option>
-    </select>
-  </div>
-  <div class="form-group"><label data-i18n="rate_limit">Rate Limit (q/s, 0=unlimited)</label><input type="number" id="peRateLimit" value="5" min="0" step="0.1"></div>
-  <div class="form-group"><label data-i18n="scatter">Concurrent requests</label><input type="number" id="peScatter" value="2" min="1" max="5" title="How many resolvers to query simultaneously per DNS request"></div>
-  <!-- Channel Management (editing only) -->
-  <div id="peChannelSection" style="display:none">
-    <hr class="section-divider">
-    <div style="font-size:14px;font-weight:600;margin-bottom:8px" data-i18n="channels">Channels</div>
-    <div class="info-note" id="peChannelNote" data-i18n="channel_mgmt_note">Channel management requires server-side support.</div>
-    <div class="channel-editor-row" id="peAddChannelRow" style="display:none">
-      <input id="peAddChannelInput" data-i18n-ph="channel_placeholder" placeholder="channel_username">
-      <button class="btn btn-primary btn-sm" onclick="addChannelEditor()" data-i18n="add">Add</button>
+  <!-- ===== PROFILE EDITOR MODAL ===== -->
+  <div class="modal-overlay" id="profileEditorModal">
+    <div class="modal">
+      <h2 id="profileEditorTitle" data-i18n="new_profile">New Profile</h2>
+      <div id="peWarning" class="tg-warning"></div>
+      <div class="form-group"><label data-i18n="nickname">Nickname</label><input id="peNick" placeholder="My Server">
+      </div>
+      <div class="form-group"><label data-i18n="domain">Domain</label><input id="peDomain" placeholder="t.example.com">
+      </div>
+      <div class="form-group"><label data-i18n="passphrase">Passphrase</label><input type="password" id="peKey"
+          placeholder="..."></div>
+      <div class="form-group"><label data-i18n="resolvers">Resolvers</label><textarea id="peResolvers"
+          placeholder="8.8.8.8&#10;1.1.1.1"></textarea></div>
+      <div class="form-group"><label data-i18n="query_mode">Query Mode</label>
+        <select id="peQueryMode">
+          <option value="single">Single label (base32)</option>
+          <option value="double">Multi-label (hex)</option>
+        </select>
+      </div>
+      <div class="form-group"><label data-i18n="rate_limit">Rate Limit (q/s, 0=unlimited)</label><input type="number"
+          id="peRateLimit" value="5" min="0" step="0.1"></div>
+      <div class="form-group"><label data-i18n="scatter">Concurrent requests</label><input type="number" id="peScatter"
+          value="2" min="1" max="5" title="How many resolvers to query simultaneously per DNS request"></div>
+      <!-- Channel Management (editing only) -->
+      <div id="peChannelSection" style="display:none">
+        <hr class="section-divider">
+        <div style="font-size:14px;font-weight:600;margin-bottom:8px" data-i18n="channels">Channels</div>
+        <div class="info-note" id="peChannelNote" data-i18n="channel_mgmt_note">Channel management requires server-side
+          support.</div>
+        <div class="channel-editor-row" id="peAddChannelRow" style="display:none">
+          <input id="peAddChannelInput" data-i18n-ph="channel_placeholder" placeholder="channel_username">
+          <button class="btn btn-primary btn-sm" onclick="addChannelEditor()" data-i18n="add">Add</button>
+        </div>
+        <div id="peChannelList" style="max-height:150px;overflow-y:auto"></div>
+      </div>
+      <div id="peError" style="color:var(--error);font-size:12px;display:none;margin-top:8px"></div>
+      <div class="modal-actions">
+        <button class="btn btn-flat" onclick="closeProfileEditor()" data-i18n="cancel">Cancel</button>
+        <button class="btn btn-danger" id="peDeleteBtn" style="display:none" onclick="deleteEditingProfile()"
+          data-i18n="delete">Delete</button>
+        <button class="btn btn-primary" onclick="saveProfile()" data-i18n="save">Save</button>
+      </div>
     </div>
-    <div id="peChannelList" style="max-height:150px;overflow-y:auto"></div>
   </div>
-  <div id="peError" style="color:var(--error);font-size:12px;display:none;margin-top:8px"></div>
-  <div class="modal-actions">
-    <button class="btn btn-flat" onclick="closeProfileEditor()" data-i18n="cancel">Cancel</button>
-    <button class="btn btn-danger" id="peDeleteBtn" style="display:none" onclick="deleteEditingProfile()" data-i18n="delete">Delete</button>
-    <button class="btn btn-primary" onclick="saveProfile()" data-i18n="save">Save</button>
-  </div>
-</div>
-</div>
 
-<script>
-// ===== i18n =====
-var I18N = {
-  fa: {
-    search:'جستجو...',settings:'تنظیمات',profiles:'پروفایل‌ها',
-    no_channels:'هنوز کانالی دریافت نشده',loading:'در حال بارگذاری...',no_messages:'هنوز پیامی در این کانال وجود ندارد',
-    no_channels_hint:'در پس‌زمینه داریم کار می‌کنیم — برای دیدن جزئیات روی',
-    no_channels_hint2:'کلیک کنید',
-    scanning_resolvers:'در حال بررسی ریزالور‌ها',
-    server_fetch_wait:'سرور در حال دریافت اطلاعات جدید از تلگرام',
-    no_messages_hint:'برنامه در حال دریافت پیام‌ها است. لطفاً چند لحظه صبر کنید...',
-    write_message:'پیام بنویسید...',configure_server:'برای شروع یک سرور راه‌اندازی کنید',
-    set_up:'راه‌اندازی',switching:'در حال تغییر پروفایل...',
-    font_size:'اندازه قلم',debug_mode:'حالت دیباگ',language:'زبان',
-    next_fetch_info:'زمان باقی‌مانده تا دریافت بعدی محتوا توسط سرور',
-    no_profiles:'هنوز پروفایلی وجود ندارد',add_profile:'+ پروفایل جدید',
-    import_uri_label:'وارد کردن پیوند (URI)',import_uri_ph:'thefeed://...',import:'وارد کردن',close:'بستن',
-    invalid_uri:'پیوند باید با thefeed:// شروع شود',uri_missing:'پیوند فاقد دامنه یا رمز است',
-    import_success:'وارد شد! پروفایل "{d}" ساخته شد.',import_error:'خطا در وارد کردن',
-    new_profile:'پروفایل جدید',edit_profile:'ویرایش پروفایل',
-    nickname:'نام مستعار',domain:'دامنه',passphrase:'رمز رمزنگاری',
-    resolvers:'Resolvers (یک در هر خط)',query_mode:'حالت کوئری',rate_limit:'محدودیت نرخ (ک/ث، ۰=بدون محدودیت)',
-    channels:'کانال\u200cها',add:'افزودن',remove:'حذف',
-    scatter:'درخواست‌های همزمان',
-    channel_mgmt_note:'مدیریت کانال نیاز به پشتیبانی سمت سرور دارد. اگر توسط ادمین غیرفعال شده باشد، افزودن/حذف کار نمی\u200cکند.',
-    channel_mgmt_inactive:'برای مدیریت کانال\u200cها، ابتدا این پروفایل را فعال کنید.',
-    channel_placeholder:'نام کاربری کانال',
-    version:'نسخه',
-    edit:'ویرایش',share:'اشتراک\u200cگذاری',delete:'حذف',save:'ذخیره',cancel:'لغو',
-    copied:'کپی شد!',copy:'کپی',active:'فعال',
-    private:'خصوصی',no_config:'ابتدا پروفایل را ذخیره کنید',
-    refreshing:'در حال بروزرسانی...',fetching_channel:'در حال دریافت کانال...',
-    msg_copied:'پیام کپی شد!',rescan_started:'بررسی مجدد شروع شد',
-    add_manual:'✎ ساخت دستی',rescan:'بررسی مجدد',
-    new_messages:'پیام جدید',missed_messages:'{n} پیام از دست رفته یا حذف شده',
-    clear_cache:'پاک کردن کش',cache_cleared:'کش پاک شد!',
-    saved_resolvers_title:'شروع سریع',
-    saved_resolvers_msg:'آخرین اسکن ({t}) نتیجه داد: {n} سرور DNS سالم پیدا شد. همین‌ها را استفاده کنیم یا دوباره اسکن کنیم؟',
-    saved_resolvers_use:'استفاده کن (بدون اسکن)',
-    saved_resolvers_rescan:'اسکن مجدد',
-    saved_resolvers_skip:'بعداً',
-    saved_resolvers_applied:'سرورهای DNS ذخیره‌شده اعمال شدند',
-    minutes_ago:'دقیقه پیش',
-    hours_ago:'ساعت پیش',
-  },
-  en: {
-    search:'Search...',settings:'Settings',profiles:'Profiles',
-    no_channels:'No channels yet',loading:'Loading...',no_messages:'No messages in this channel',
-    no_channels_hint:'Working in the background — tap',
-    no_channels_hint2:'to see what\'s happening',
-    scanning_resolvers:'Scanning resolvers',
-    server_fetch_wait:'Server fetching fresh data from Telegram',
-    no_messages_hint:'The app is trying to fetch messages. Please wait a moment...',
-    write_message:'Write a message...',configure_server:'Configure a server to start reading',
-    set_up:'Set Up',switching:'Switching profile...',
-    font_size:'Font Size',debug_mode:'Debug mode',language:'Language',
-    next_fetch_info:'Time until the server next fetches fresh channel content',
-    no_profiles:'No profiles yet',add_profile:'+ Add Profile',
-    import_uri_label:'Import URI',import_uri_ph:'thefeed://...',import:'Import',close:'Close',
-    invalid_uri:'URI must start with thefeed://',uri_missing:'URI missing domain or passphrase',
-    import_success:'Imported! Profile "{d}" created.',import_error:'Import error',
-    new_profile:'New Profile',edit_profile:'Edit Profile',
-    nickname:'Nickname',domain:'Domain',passphrase:'Passphrase',
-    resolvers:'Resolvers (one per line)',query_mode:'Query Mode',rate_limit:'Rate Limit (q/s, 0=unlimited)',
-    channels:'Channels',add:'Add',remove:'Remove',
-    scatter:'Concurrent requests',
-    channel_mgmt_note:'Channel management requires server-side support. If disabled by the server admin, adding/removing channels will not work.',
-    channel_mgmt_inactive:'Switch to this profile first to manage its channels.',
-    channel_placeholder:'channel_username',
-    version:'Version',
-    edit:'Edit',share:'Share',delete:'Delete',save:'Save',cancel:'Cancel',
-    copied:'URI copied!',copy:'Copy',active:'Active',
-    private:'Private',no_config:'Save a profile first',
-    refreshing:'Refreshing...',fetching_channel:'Fetching channel...',
-    msg_copied:'Message copied!',rescan_started:'Rescan started',
-    add_manual:'✎ Create Manually',rescan:'Rescan',
-    new_messages:'New messages',missed_messages:'{n} messages missed or deleted',
-    clear_cache:'Clear Cache',cache_cleared:'Cache cleared!',
-    saved_resolvers_title:'Quick Start',
-    saved_resolvers_msg:'Last scan ({t}) found {n} healthy DNS servers. Use them now (no scan needed), or scan again to re-verify.',
-    saved_resolvers_use:'Use Now (skip scan)',
-    saved_resolvers_rescan:'Scan Again',
-    saved_resolvers_skip:'Later',
-    saved_resolvers_applied:'Saved DNS servers applied!',
-    minutes_ago:'min ago',
-    hours_ago:'hr ago',
-  }
-};
-var lang = localStorage.getItem('thefeed_lang') || 'fa';
-function t(k){return (I18N[lang]&&I18N[lang][k])||I18N.en[k]||k}
-function applyLang(){
-  var isRtl = lang==='fa';
-  document.documentElement.dir = isRtl?'rtl':'ltr';
-  document.documentElement.lang = lang;
-  document.querySelectorAll('[data-i18n]').forEach(function(el){el.textContent=t(el.dataset.i18n)});
-  document.querySelectorAll('[data-i18n-ph]').forEach(function(el){el.placeholder=t(el.dataset.i18nPh)});
-  document.querySelectorAll('[data-i18n-title]').forEach(function(el){el.title=t(el.dataset.i18nTitle)});
-  document.getElementById('langFa').classList.toggle('active-lang',lang==='fa');
-  document.getElementById('langEn').classList.toggle('active-lang',lang==='en');
-  document.getElementById('sendInput').style.direction=isRtl?'rtl':'ltr';
-  // Re-render dynamic content
-  if(channels.length>0)renderChannels();
-}
-function setLang(l){lang=l;localStorage.setItem('thefeed_lang',l);applyLang()}
-
-// ===== STATE =====
-var selectedChannel=0,channels=[],eventSource=null,autoRefreshTimer=null,telegramLoggedIn=false,logVisible=false;
-var serverNextFetch=0,nextFetchInterval=null,previousMsgIDs={},currentMsgTexts=[];
-var profiles=null,activeProfileId='',editingProfileId=null,resolverScanHint='',resolverScanHealthy=0,resolverScanDone=0,resolverScanTotal=0;
-
-// ===== MOBILE NAV =====
-function openChat(){if(window.innerWidth<=768)document.getElementById('app').classList.add('chat-open')}
-function openSidebar(){document.getElementById('app').classList.remove('chat-open')}
-function filterChannels(){
-  var q=document.getElementById('channelSearch').value.toLowerCase();
-  document.querySelectorAll('.ch-item').forEach(function(el){el.style.display=el.dataset.name.toLowerCase().includes(q)?'flex':'none'});
-}
-
-// ===== INIT =====
-async function init(){
-  applyLang();
-  await loadFontSize();
-  connectSSE();
-  try{
-    var r=await fetch('/api/status');var st=await r.json();
-    await loadProfiles();
-    if(!st.configured){openProfiles();return}
-    cleanupOldLocalStorageKeys();
-    checkAndShowSavedResolversPrompt(st);
-    telegramLoggedIn=!!st.telegramLoggedIn;
-    serverNextFetch=st.nextFetch||0;
-    updateNextFetchDisplay();
-    await loadChannels();
-    if(channels&&channels.length>0)await selectChannel(1);
-    else{showInitProgress();await doRefresh();openChat()}
-    startAutoRefresh();
-  }catch(e){}
-}
-
-// ===== FONT SIZE =====
-async function loadFontSize(){
-  try{
-    var r=await fetch('/api/settings');var s=await r.json();
-    if(s.fontSize>=11&&s.fontSize<=22){
-      document.documentElement.style.setProperty('--font-size',s.fontSize+'px');
-      document.getElementById('fontSizeSlider').value=s.fontSize;
-      document.getElementById('fontSizeVal').textContent=s.fontSize;
+  <script>
+    // ===== i18n =====
+    var I18N = {
+      fa: {
+        search: 'جستجو...', settings: 'تنظیمات', profiles: 'پروفایل‌ها',
+        no_channels: 'هنوز کانالی دریافت نشده', loading: 'در حال بارگذاری...', no_messages: 'هنوز پیامی در این کانال وجود ندارد',
+        no_channels_hint: 'در پس‌زمینه داریم کار می‌کنیم — برای دیدن جزئیات روی',
+        no_channels_hint2: 'کلیک کنید',
+        scanning_resolvers: 'در حال بررسی ریزالور‌ها',
+        server_fetch_wait: 'سرور در حال دریافت اطلاعات جدید از تلگرام',
+        no_messages_hint: 'برنامه در حال دریافت پیام‌ها است. لطفاً چند لحظه صبر کنید...',
+        write_message: 'پیام بنویسید...', configure_server: 'برای شروع یک سرور راه‌اندازی کنید',
+        set_up: 'راه‌اندازی', switching: 'در حال تغییر پروفایل...',
+        font_size: 'اندازه قلم', debug_mode: 'حالت دیباگ', language: 'زبان',
+        next_fetch_info: 'زمان باقی‌مانده تا دریافت بعدی محتوا توسط سرور',
+        no_profiles: 'هنوز پروفایلی وجود ندارد', add_profile: '+ پروفایل جدید',
+        import_uri_label: 'وارد کردن پیوند (URI)', import_uri_ph: 'thefeed://...', import: 'وارد کردن', close: 'بستن',
+        invalid_uri: 'پیوند باید با thefeed:// شروع شود', uri_missing: 'پیوند فاقد دامنه یا رمز است',
+        import_success: 'وارد شد! پروفایل "{d}" ساخته شد.', import_error: 'خطا در وارد کردن',
+        new_profile: 'پروفایل جدید', edit_profile: 'ویرایش پروفایل',
+        nickname: 'نام مستعار', domain: 'دامنه', passphrase: 'رمز رمزنگاری',
+        resolvers: 'Resolvers (یک در هر خط)', query_mode: 'حالت کوئری', rate_limit: 'محدودیت نرخ (ک/ث، ۰=بدون محدودیت)',
+        channels: 'کانال\u200cها', add: 'افزودن', remove: 'حذف',
+        scatter: 'درخواست‌های همزمان',
+        channel_mgmt_note: 'مدیریت کانال نیاز به پشتیبانی سمت سرور دارد. اگر توسط ادمین غیرفعال شده باشد، افزودن/حذف کار نمی\u200cکند.',
+        channel_mgmt_inactive: 'برای مدیریت کانال\u200cها، ابتدا این پروفایل را فعال کنید.',
+        channel_placeholder: 'نام کاربری کانال',
+        version: 'نسخه',
+        edit: 'ویرایش', share: 'اشتراک\u200cگذاری', delete: 'حذف', save: 'ذخیره', cancel: 'لغو',
+        copied: 'کپی شد!', copy: 'کپی', active: 'فعال',
+        private: 'خصوصی', no_config: 'ابتدا پروفایل را ذخیره کنید',
+        refreshing: 'در حال بروزرسانی...', fetching_channel: 'در حال دریافت کانال...',
+        msg_copied: 'پیام کپی شد!', rescan_started: 'بررسی مجدد شروع شد',
+        add_manual: '✎ ساخت دستی', rescan: 'بررسی مجدد',
+        new_messages: 'پیام جدید', missed_messages: '{n} پیام از دست رفته یا حذف شده',
+        clear_cache: 'پاک کردن کش', cache_cleared: 'کش پاک شد!',
+        saved_resolvers_title: 'شروع سریع',
+        saved_resolvers_msg: 'آخرین اسکن ({t}) نتیجه داد: {n} سرور DNS سالم پیدا شد. همین‌ها را استفاده کنیم یا دوباره اسکن کنیم؟',
+        saved_resolvers_use: 'استفاده کن (بدون اسکن)',
+        saved_resolvers_rescan: 'اسکن مجدد',
+        saved_resolvers_skip: 'بعداً',
+        saved_resolvers_applied: 'سرورهای DNS ذخیره‌شده اعمال شدند',
+        minutes_ago: 'دقیقه پیش',
+        hours_ago: 'ساعت پیش',
+      },
+      en: {
+        search: 'Search...', settings: 'Settings', profiles: 'Profiles',
+        no_channels: 'No channels yet', loading: 'Loading...', no_messages: 'No messages in this channel',
+        no_channels_hint: 'Working in the background — tap',
+        no_channels_hint2: 'to see what\'s happening',
+        scanning_resolvers: 'Scanning resolvers',
+        server_fetch_wait: 'Server fetching fresh data from Telegram',
+        no_messages_hint: 'The app is trying to fetch messages. Please wait a moment...',
+        write_message: 'Write a message...', configure_server: 'Configure a server to start reading',
+        set_up: 'Set Up', switching: 'Switching profile...',
+        font_size: 'Font Size', debug_mode: 'Debug mode', language: 'Language',
+        next_fetch_info: 'Time until the server next fetches fresh channel content',
+        no_profiles: 'No profiles yet', add_profile: '+ Add Profile',
+        import_uri_label: 'Import URI', import_uri_ph: 'thefeed://...', import: 'Import', close: 'Close',
+        invalid_uri: 'URI must start with thefeed://', uri_missing: 'URI missing domain or passphrase',
+        import_success: 'Imported! Profile "{d}" created.', import_error: 'Import error',
+        new_profile: 'New Profile', edit_profile: 'Edit Profile',
+        nickname: 'Nickname', domain: 'Domain', passphrase: 'Passphrase',
+        resolvers: 'Resolvers (one per line)', query_mode: 'Query Mode', rate_limit: 'Rate Limit (q/s, 0=unlimited)',
+        channels: 'Channels', add: 'Add', remove: 'Remove',
+        scatter: 'Concurrent requests',
+        channel_mgmt_note: 'Channel management requires server-side support. If disabled by the server admin, adding/removing channels will not work.',
+        channel_mgmt_inactive: 'Switch to this profile first to manage its channels.',
+        channel_placeholder: 'channel_username',
+        version: 'Version',
+        edit: 'Edit', share: 'Share', delete: 'Delete', save: 'Save', cancel: 'Cancel',
+        copied: 'URI copied!', copy: 'Copy', active: 'Active',
+        private: 'Private', no_config: 'Save a profile first',
+        refreshing: 'Refreshing...', fetching_channel: 'Fetching channel...',
+        msg_copied: 'Message copied!', rescan_started: 'Rescan started',
+        add_manual: '✎ Create Manually', rescan: 'Rescan',
+        new_messages: 'New messages', missed_messages: '{n} messages missed or deleted',
+        clear_cache: 'Clear Cache', cache_cleared: 'Cache cleared!',
+        saved_resolvers_title: 'Quick Start',
+        saved_resolvers_msg: 'Last scan ({t}) found {n} healthy DNS servers. Use them now (no scan needed), or scan again to re-verify.',
+        saved_resolvers_use: 'Use Now (skip scan)',
+        saved_resolvers_rescan: 'Scan Again',
+        saved_resolvers_skip: 'Later',
+        saved_resolvers_applied: 'Saved DNS servers applied!',
+        minutes_ago: 'min ago',
+        hours_ago: 'hr ago',
+      }
+    };
+    var lang = localStorage.getItem('thefeed_lang') || 'fa';
+    function t(k) { return (I18N[lang] && I18N[lang][k]) || I18N.en[k] || k }
+    function applyLang() {
+      var isRtl = lang === 'fa';
+      document.documentElement.dir = isRtl ? 'rtl' : 'ltr';
+      document.documentElement.lang = lang;
+      document.querySelectorAll('[data-i18n]').forEach(function (el) { el.textContent = t(el.dataset.i18n) });
+      document.querySelectorAll('[data-i18n-ph]').forEach(function (el) { el.placeholder = t(el.dataset.i18nPh) });
+      document.querySelectorAll('[data-i18n-title]').forEach(function (el) { el.title = t(el.dataset.i18nTitle) });
+      document.getElementById('langFa').classList.toggle('active-lang', lang === 'fa');
+      document.getElementById('langEn').classList.toggle('active-lang', lang === 'en');
+      document.getElementById('sendInput').style.direction = isRtl ? 'rtl' : 'ltr';
+      // Re-render dynamic content
+      if (channels.length > 0) renderChannels();
     }
-    if(s.debug)document.getElementById('cfgDebug').checked=true;
-    if(s.version){var vEl=document.getElementById('appVersionEl');if(vEl)vEl.textContent=s.version+(s.commit&&s.commit!=='unknown'?' ('+s.commit.slice(0,7)+')':'');}
-  }catch(e){}
-}
-function previewFontSize(v){document.documentElement.style.setProperty('--font-size',v+'px');document.getElementById('fontSizeVal').textContent=v}
+    function setLang(l) { lang = l; localStorage.setItem('thefeed_lang', l); applyLang() }
 
-// ===== SETTINGS =====
-function openSettings(){document.getElementById('settingsModal').classList.add('active')}
-function closeSettings(){document.getElementById('settingsModal').classList.remove('active')}
-async function saveSettings(){
-  var fs=parseInt(document.getElementById('fontSizeSlider').value)||14;
-  var dbg=document.getElementById('cfgDebug').checked;
-  try{await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fontSize:fs,debug:dbg})})}catch(e){}
-  closeSettings();
-}
-async function clearCache(){
-  try{var r=await fetch('/api/cache/clear',{method:'POST'});var j=await r.json();if(j.ok){alert(t('cache_cleared'))}}catch(e){}
-}
+    // ===== STATE =====
+    var selectedChannel = 0, channels = [], eventSource = null, autoRefreshTimer = null, telegramLoggedIn = false, logVisible = false;
+    var serverNextFetch = 0, nextFetchInterval = null, previousMsgIDs = {}, currentMsgTexts = [];
+    var profiles = null, activeProfileId = '', editingProfileId = null, resolverScanHint = '', resolverScanHealthy = 0, resolverScanDone = 0, resolverScanTotal = 0;
 
-// ===== SAVED RESOLVERS PROMPT =====
-function checkAndShowSavedResolversPrompt(status){
-  if(sessionStorage.getItem('thefeed_scan_prompt_shown'))return;
-  if(!status.lastScan||!status.lastScan.count)return;
-  var ls=status.lastScan;
-  var ageSec=Math.floor(Date.now()/1000)-ls.scannedAt;
-  var ageStr;
-  if(ageSec<3600)ageStr=Math.max(1,Math.round(ageSec/60))+' '+t('minutes_ago');
-  else ageStr=Math.round(ageSec/3600)+' '+t('hours_ago');
-  var msg=t('saved_resolvers_msg').replace('{n}',ls.count).replace('{t}',ageStr);
-  document.getElementById('savedResolversMsg').textContent=msg;
-  document.getElementById('savedResolversModal').classList.add('active');
-}
-function savedResolversSkip(){
-  // "Later" — just close, server already applied saved resolvers and refresh is underway
-  document.getElementById('savedResolversModal').classList.remove('active');
-  sessionStorage.setItem('thefeed_scan_prompt_shown','1');
-}
-function savedResolversUseNow(){
-  // Server already applied saved resolvers at startup; just close the popup
-  savedResolversSkip();
-  showToast(t('saved_resolvers_applied'));
-}
-async function savedResolversRescan(){
-  savedResolversSkip();
-  try{await fetch('/api/rescan',{method:'POST'})}catch(e){}
-  showToast(t('rescan_started'));
-}
-
-// ===== SSE =====
-function connectSSE(){
-  if(eventSource)eventSource.close();
-  // Clear stale progress items from a previous connection
-  document.getElementById('progressPanel').innerHTML='';
-  resolverScanHint='';
-  eventSource=new EventSource('/api/events');
-  eventSource.addEventListener('log',function(e){addLogLine(JSON.parse(e.data))});
-  eventSource.addEventListener('update',async function(e){
-    var data;try{data=JSON.parse(e.data)}catch(x){data=e.data}
-    var wasEmpty=channels.length===0;
-    var snapChannel=selectedChannel;
-    await loadChannels();
-    if(wasEmpty&&channels.length>0&&selectedChannel===0){
-      closeProfiles();
-      await selectChannel(1);return
+    // ===== MOBILE NAV =====
+    function openChat() { if (window.innerWidth <= 768) document.getElementById('app').classList.add('chat-open') }
+    function openSidebar() { document.getElementById('app').classList.remove('chat-open') }
+    function filterChannels() {
+      var q = document.getElementById('channelSearch').value.toLowerCase();
+      document.querySelectorAll('.ch-item').forEach(function (el) { el.style.display = el.dataset.name.toLowerCase().includes(q) ? 'flex' : 'none' });
     }
-    if(data&&typeof data==='object'&&data.channel){
-      if(data.channel===snapChannel)await loadMessages(data.channel)
-    }else if(snapChannel>0){await loadMessages(snapChannel)}
-    updateSendPanel();
-  });
-  eventSource.onerror=function(){
-    if(eventSource.readyState===EventSource.CLOSED){eventSource.close();setTimeout(connectSSE,3000)}
-  };
-}
 
-// ===== PROFILES =====
-async function loadProfiles(){
-  try{
-    var r=await fetch('/api/profiles');profiles=await r.json();
-    activeProfileId=profiles.active||'';
-    renderProfileBtn();
-  }catch(e){profiles=null}
-}
-
-function renderProfileBtn(){
-  var nameEl=document.getElementById('profileBtnName');
-  var avatarEl=document.getElementById('profileBtnAvatar');
-  if(!profiles||!profiles.profiles||!profiles.profiles.length){
-    nameEl.textContent=t('set_up');avatarEl.textContent='?';return
-  }
-  var active=profiles.profiles.find(function(p){return p.id===activeProfileId});
-  var display=(active&&(active.nickname||active.config.domain))||t('profiles');
-  nameEl.textContent=display;
-  avatarEl.textContent=(active&&(active.nickname||active.config.domain)||'?').charAt(0).toUpperCase();
-}
-
-function openProfiles(){
-  document.getElementById('profilesModal').classList.add('active');
-  document.getElementById('importError').style.display='none';
-  document.getElementById('importSuccess').style.display='none';
-  document.getElementById('importUriInput').value='';
-  renderProfilesModal();
-}
-function closeProfiles(){document.getElementById('profilesModal').classList.remove('active')}
-
-function buildProfileUri(id){
-  if(!profiles||!profiles.profiles)return'';
-  var p=profiles.profiles.find(function(x){return x.id===id});
-  if(!p||!p.config.domain)return'';
-  return'thefeed://'+encodeURIComponent(p.config.domain)+'/'+encodeURIComponent(p.config.key)+'?r='+encodeURIComponent((p.config.resolvers||[]).join(','));
-}
-
-function renderProfilesModal(){
-  var el=document.getElementById('profilesListEl');
-  if(!profiles||!profiles.profiles||!profiles.profiles.length){
-    el.innerHTML='<div style="color:var(--text-dim);padding:14px 0;font-size:13px">'+t('no_profiles')+'</div>';return
-  }
-  var h='';
-  for(var i=0;i<profiles.profiles.length;i++){
-    var p=profiles.profiles[i];
-    var isActive=p.id===activeProfileId;
-    var initial=(p.nickname||p.config.domain||'?').charAt(0).toUpperCase();
-    var shareId='share-'+p.id;
-    h+='<div class="profile-row'+(isActive?' active-profile':'')+'" id="prow-'+p.id+'">';
-    h+='<div class="profile-row-main" onclick="activateProfile(\''+p.id+'\')">';
-    h+='<div class="profile-row-avatar">'+esc(initial)+'</div>';
-    h+='<div class="profile-row-info"><div class="profile-row-name">'+esc(p.nickname||p.config.domain);
-    if(isActive)h+='<span class="active-badge">'+t('active')+'</span>';
-    h+='</div><div class="profile-row-domain">'+esc(p.config.domain)+'</div></div>';
-    h+='<div class="profile-row-btns">';
-    if(isActive)h+='<button class="btn btn-flat btn-sm" onclick="event.stopPropagation();doRescanFromProfiles()" title="'+t('rescan')+'" style="color:var(--success)">&#128260;</button>';
-    h+='<button class="btn btn-flat btn-sm" onclick="event.stopPropagation();toggleSharePanel(\''+p.id+'\')" title="'+t('share')+'">&#128279;</button>';
-    h+='<button class="btn btn-flat btn-sm" onclick="event.stopPropagation();openProfileEditor(\''+p.id+'\')" title="'+t('edit')+'">&#9998;</button>';
-    h+='</div></div>';
-    // Share panel (hidden by default)
-    h+='<div class="share-panel" id="'+shareId+'" style="display:none">';
-    h+='<div class="share-panel-inner">';
-    h+='<input class="share-uri-input" type="text" readonly id="suri-'+p.id+'" value="">';
-    h+='<button class="btn btn-primary btn-sm" onclick="copyShareUri(\''+p.id+'\')">'+t('copy')+'</button>';
-    h+='<button class="btn btn-flat btn-sm" onclick="toggleSharePanel(\''+p.id+'\')">&#10005;</button>';
-    h+='</div></div>';
-    h+='</div>';
-  }
-  el.innerHTML=h;
-}
-
-function toggleSharePanel(id){
-  // Close all first
-  document.querySelectorAll('.share-panel').forEach(function(sp){sp.style.display='none'});
-  var panel=document.getElementById('share-'+id);
-  if(!panel)return;
-  var uri=buildProfileUri(id);
-  var input=document.getElementById('suri-'+id);
-  if(input)input.value=uri||t('no_config');
-  panel.style.display='block';
-}
-
-function copyShareUri(id){
-  var uri=buildProfileUri(id);
-  if(!uri){showToast(t('no_config'));return}
-  navigator.clipboard.writeText(uri).then(function(){showToast(t('copied'))}).catch(function(){
-    var input=document.getElementById('suri-'+id);if(input){input.select();input.setSelectionRange(0,9999);}
-    showToast(t('copied'));
-  });
-}
-
-async function activateProfile(id){
-  if(id===activeProfileId){closeProfiles();return}
-  try{
-    var r=await fetch('/api/profiles/switch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:id})});
-    if(!r.ok)return;
-    activeProfileId=id;selectedChannel=0;channels=[];    document.getElementById('progressPanel').innerHTML='';    document.getElementById('messages').innerHTML='<div class="empty-state"><p>'+t('switching')+'</p></div>';
-    await loadProfiles();closeProfiles();
-    await loadChannels();
-    if(channels.length>0)await selectChannel(1);
-    else{showInitProgress();await doRefresh()}
-  }catch(e){}
-}
-
-// ===== IMPORT URI =====
-async function doImportUri(){
-  var errEl=document.getElementById('importError');var okEl=document.getElementById('importSuccess');
-  errEl.style.display='none';okEl.style.display='none';
-  var uri=document.getElementById('importUriInput').value.trim();
-  if(!uri.startsWith('thefeed://')){errEl.textContent=t('invalid_uri');errEl.style.display='block';return}
-  try{
-    var body=uri.substring('thefeed://'.length);
-    var qIdx=body.indexOf('?');var path=qIdx>=0?body.substring(0,qIdx):body;
-    var params=qIdx>=0?body.substring(qIdx+1):'';
-    var parts=path.split('/');
-    var domain=decodeURIComponent(parts[0]||'');var key=decodeURIComponent(parts[1]||'');
-    var resolvers=[];
-    params.split('&').forEach(function(kv){var p=kv.split('=');if(p[0]==='r'&&p[1])resolvers=decodeURIComponent(p[1]).split(',').filter(Boolean)});
-    if(!domain||!key){errEl.textContent=t('uri_missing');errEl.style.display='block';return}
-    if(!resolvers.length)resolvers=['8.8.8.8','1.1.1.1'];
-    var profile={id:'',nickname:domain,config:{domain:domain,key:key,resolvers:resolvers,queryMode:'single',rateLimit:5}};
-    var r=await fetch('/api/profiles',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'create',profile:profile})});
-    if(!r.ok)throw new Error('save failed');
-    okEl.textContent=t('import_success').replace('{d}',domain);okEl.style.display='block';
-    document.getElementById('importUriInput').value='';
-    await loadProfiles();renderProfilesModal();
-  }catch(e){errEl.textContent=t('import_error')+': '+e.message;errEl.style.display='block'}
-}
-
-// ===== PROFILE EDITOR =====
-function openProfileEditor(id){
-  editingProfileId=id;
-  document.getElementById('profileEditorModal').classList.add('active');
-  document.getElementById('peError').style.display='none';
-  document.getElementById('peWarning').style.display='none';
-  if(id){
-    document.getElementById('profileEditorTitle').textContent=t('edit_profile');
-    document.getElementById('peDeleteBtn').style.display='';
-    var p=profiles&&profiles.profiles&&profiles.profiles.find(function(x){return x.id===id});
-    if(p){
-      document.getElementById('peNick').value=p.nickname||'';
-      document.getElementById('peDomain').value=p.config.domain||'';
-      document.getElementById('peKey').value=p.config.key||'';
-      document.getElementById('peResolvers').value=(p.config.resolvers||[]).join('\n');
-      document.getElementById('peQueryMode').value=p.config.queryMode||'single';
-      document.getElementById('peRateLimit').value=p.config.rateLimit||5;
-      document.getElementById('peScatter').value=p.config.scatter||2;
-    }
-    document.getElementById('peChannelSection').style.display='';
-    var isActive=id===activeProfileId;
-    if(isActive){
-      document.getElementById('peChannelNote').textContent=t('channel_mgmt_note');
-      document.getElementById('peAddChannelRow').style.display='flex';
-      loadEditorChannels();
-    }else{
-      document.getElementById('peChannelNote').textContent=t('channel_mgmt_inactive');
-      document.getElementById('peAddChannelRow').style.display='none';
-      document.getElementById('peChannelList').innerHTML='';
-    }
-  }else{
-    document.getElementById('profileEditorTitle').textContent=t('new_profile');
-    document.getElementById('peDeleteBtn').style.display='none';
-    document.getElementById('peNick').value='';
-    document.getElementById('peDomain').value='';
-    document.getElementById('peKey').value='';
-    document.getElementById('peResolvers').value='';
-    document.getElementById('peQueryMode').value='single';
-    document.getElementById('peRateLimit').value='5';
-    document.getElementById('peScatter').value='2';
-    document.getElementById('peChannelSection').style.display='none';
-  }
-}
-function closeProfileEditor(){document.getElementById('profileEditorModal').classList.remove('active');editingProfileId=null}
-
-async function loadEditorChannels(){
-  var el=document.getElementById('peChannelList');
-  el.innerHTML='<div style="color:var(--text-dim);font-size:12px">'+t('loading')+'</div>';
-  try{
-    var r=await fetch('/api/admin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({command:'list_channels',arg:''})});
-    if(!r.ok)throw new Error(await r.text()||'failed');
-    var data=await r.json();
-    var chans=(data.result||'').split('\n').filter(function(s){return s.trim()});
-    if(!chans.length){el.innerHTML='<div style="color:var(--text-dim);font-size:12px">'+t('no_channels')+'</div>';return}
-    var h='';
-    for(var i=0;i<chans.length;i++){
-      h+='<div class="channel-list-item"><span>'+esc(chans[i])+'</span>';
-      h+='<button class="btn btn-flat btn-sm" style="color:var(--error)" data-ch="'+esc(chans[i])+'" onclick="removeChannelEditor(this.dataset.ch)">'+t('remove')+'</button></div>';
-    }
-    el.innerHTML=h;
-  }catch(e){el.innerHTML='<div style="color:var(--error);font-size:12px">'+esc(e.message)+'</div>'}
-}
-
-async function addChannelEditor(){
-  var input=document.getElementById('peAddChannelInput');
-  var u=input.value.trim().replace(/^@/,'');if(!u)return;
-  try{
-    var r=await fetch('/api/admin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({command:'add_channel',arg:u})});
-    if(!r.ok){showToast(await r.text()||'Failed');return}
-    input.value='';addLogLine('Channel added: '+u);loadEditorChannels();
-  }catch(e){showToast(e.message)}
-}
-
-async function removeChannelEditor(u){
-  try{
-    var r=await fetch('/api/admin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({command:'remove_channel',arg:u})});
-    if(!r.ok){showToast(await r.text()||'Failed');return}
-    addLogLine('Channel removed: '+u);loadEditorChannels();
-  }catch(e){showToast(e.message)}
-}
-
-async function saveProfile(){
-  var errEl=document.getElementById('peError');errEl.style.display='none';
-  var nick=document.getElementById('peNick').value.trim();
-  var domain=document.getElementById('peDomain').value.trim();
-  var key=document.getElementById('peKey').value;
-  var resolvers=document.getElementById('peResolvers').value.trim().split(/[\n,]+/).map(function(s){return s.trim()}).filter(Boolean);
-  if(!domain||!key||!resolvers.length){errEl.textContent=t('resolvers')+' / '+t('domain')+' / '+t('passphrase');errEl.style.display='block';return}
-  var profile={id:editingProfileId||'',nickname:nick||domain,config:{domain:domain,key:key,resolvers:resolvers,queryMode:document.getElementById('peQueryMode').value,rateLimit:parseFloat(document.getElementById('peRateLimit').value)||5,scatter:parseInt(document.getElementById('peScatter').value)||2}};
-  var action=editingProfileId?'update':'create';
-  var wasFirst=!profiles||!profiles.profiles||profiles.profiles.length===0;
-  try{
-    var r=await fetch('/api/profiles',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:action,profile:profile})});
-    if(!r.ok){errEl.textContent=await r.text();errEl.style.display='block';return}
-    await loadProfiles();
-    var savedEditId=editingProfileId;
-    closeProfileEditor();
-    if(wasFirst){
-      closeProfiles();
-      document.getElementById('progressPanel').innerHTML='';
-      document.getElementById('messages').innerHTML='<div class="empty-state"><p>'+t('loading')+'</p></div>';
-      showInitProgress();
-    }else{
-      renderProfilesModal();
-      // Only rescan if we updated the currently active profile
-      if(savedEditId&&savedEditId===activeProfileId){
-        showToast(t('rescan_started'));
-        document.getElementById('progressPanel').innerHTML='';
-        showInitProgress();
+    // ===== INIT =====
+    async function init() {
+      applyLang();
+      await loadFontSize();
+      connectSSE();
+      try {
+        var r = await fetch('/api/status'); var st = await r.json();
+        await loadProfiles();
+        if (!st.configured) { openProfiles(); return }
+        cleanupOldLocalStorageKeys();
+        checkAndShowSavedResolversPrompt(st);
+        telegramLoggedIn = !!st.telegramLoggedIn;
+        serverNextFetch = st.nextFetch || 0;
+        updateNextFetchDisplay();
         await loadChannels();
-        if(selectedChannel>0)await loadMessages(selectedChannel);
+        if (channels && channels.length > 0) await selectChannel(1);
+        else { showInitProgress(); await doRefresh(); openChat() }
+        startAutoRefresh();
+      } catch (e) { }
+    }
+
+    // ===== FONT SIZE =====
+    async function loadFontSize() {
+      try {
+        var r = await fetch('/api/settings'); var s = await r.json();
+        if (s.fontSize >= 11 && s.fontSize <= 22) {
+          document.documentElement.style.setProperty('--font-size', s.fontSize + 'px');
+          document.getElementById('fontSizeSlider').value = s.fontSize;
+          document.getElementById('fontSizeVal').textContent = s.fontSize;
+        }
+        if (s.debug) document.getElementById('cfgDebug').checked = true;
+        if (s.version) { var vEl = document.getElementById('appVersionEl'); if (vEl) vEl.textContent = s.version + (s.commit && s.commit !== 'unknown' ? ' (' + s.commit.slice(0, 7) + ')' : ''); }
+      } catch (e) { }
+    }
+    function previewFontSize(v) { document.documentElement.style.setProperty('--font-size', v + 'px'); document.getElementById('fontSizeVal').textContent = v }
+
+    // ===== SETTINGS =====
+    function openSettings() { document.getElementById('settingsModal').classList.add('active') }
+    function closeSettings() { document.getElementById('settingsModal').classList.remove('active') }
+    async function saveSettings() {
+      var fs = parseInt(document.getElementById('fontSizeSlider').value) || 14;
+      var dbg = document.getElementById('cfgDebug').checked;
+      try { await fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fontSize: fs, debug: dbg }) }) } catch (e) { }
+      closeSettings();
+    }
+    async function clearCache() {
+      try { var r = await fetch('/api/cache/clear', { method: 'POST' }); var j = await r.json(); if (j.ok) { alert(t('cache_cleared')) } } catch (e) { }
+    }
+
+    // ===== SAVED RESOLVERS PROMPT =====
+    function checkAndShowSavedResolversPrompt(status) {
+      if (sessionStorage.getItem('thefeed_scan_prompt_shown')) return;
+      if (!status.lastScan || !status.lastScan.count) return;
+      var ls = status.lastScan;
+      var ageSec = Math.floor(Date.now() / 1000) - ls.scannedAt;
+      var ageStr;
+      if (ageSec < 3600) ageStr = Math.max(1, Math.round(ageSec / 60)) + ' ' + t('minutes_ago');
+      else ageStr = Math.round(ageSec / 3600) + ' ' + t('hours_ago');
+      var msg = t('saved_resolvers_msg').replace('{n}', ls.count).replace('{t}', ageStr);
+      document.getElementById('savedResolversMsg').textContent = msg;
+      document.getElementById('savedResolversModal').classList.add('active');
+    }
+    function savedResolversSkip() {
+      // "Later" — just close, server already applied saved resolvers and refresh is underway
+      document.getElementById('savedResolversModal').classList.remove('active');
+      sessionStorage.setItem('thefeed_scan_prompt_shown', '1');
+    }
+    function savedResolversUseNow() {
+      // Server already applied saved resolvers at startup; just close the popup
+      savedResolversSkip();
+      showToast(t('saved_resolvers_applied'));
+    }
+    async function savedResolversRescan() {
+      savedResolversSkip();
+      try { await fetch('/api/rescan', { method: 'POST' }) } catch (e) { }
+      showToast(t('rescan_started'));
+    }
+
+    // ===== SSE =====
+    function connectSSE() {
+      if (eventSource) eventSource.close();
+      // Clear stale progress items from a previous connection
+      document.getElementById('progressPanel').innerHTML = '';
+      resolverScanHint = '';
+      eventSource = new EventSource('/api/events');
+      eventSource.addEventListener('log', function (e) { addLogLine(JSON.parse(e.data)) });
+      eventSource.addEventListener('update', async function (e) {
+        var data; try { data = JSON.parse(e.data) } catch (x) { data = e.data }
+        var wasEmpty = channels.length === 0;
+        var snapChannel = selectedChannel;
+        await loadChannels();
+        if (wasEmpty && channels.length > 0 && selectedChannel === 0) {
+          closeProfiles();
+          await selectChannel(1); return
+        }
+        if (data && typeof data === 'object' && data.channel) {
+          if (data.channel === snapChannel) await loadMessages(data.channel)
+        } else if (snapChannel > 0) { await loadMessages(snapChannel) }
+        updateSendPanel();
+      });
+      eventSource.onerror = function () {
+        if (eventSource.readyState === EventSource.CLOSED) { eventSource.close(); setTimeout(connectSSE, 3000) }
+      };
+    }
+
+    // ===== PROFILES =====
+    async function loadProfiles() {
+      try {
+        var r = await fetch('/api/profiles'); profiles = await r.json();
+        activeProfileId = profiles.active || '';
+        renderProfileBtn();
+      } catch (e) { profiles = null }
+    }
+
+    function renderProfileBtn() {
+      var nameEl = document.getElementById('profileBtnName');
+      var avatarEl = document.getElementById('profileBtnAvatar');
+      if (!profiles || !profiles.profiles || !profiles.profiles.length) {
+        nameEl.textContent = t('set_up'); avatarEl.textContent = '?'; return
+      }
+      var active = profiles.profiles.find(function (p) { return p.id === activeProfileId });
+      var display = (active && (active.nickname || active.config.domain)) || t('profiles');
+      nameEl.textContent = display;
+      avatarEl.textContent = (active && (active.nickname || active.config.domain) || '?').charAt(0).toUpperCase();
+    }
+
+    function openProfiles() {
+      document.getElementById('profilesModal').classList.add('active');
+      document.getElementById('importError').style.display = 'none';
+      document.getElementById('importSuccess').style.display = 'none';
+      document.getElementById('importUriInput').value = '';
+      renderProfilesModal();
+    }
+    function closeProfiles() { document.getElementById('profilesModal').classList.remove('active') }
+
+    function buildProfileUri(id) {
+      if (!profiles || !profiles.profiles) return '';
+      var p = profiles.profiles.find(function (x) { return x.id === id });
+      if (!p || !p.config.domain) return '';
+      return 'thefeed://' + encodeURIComponent(p.config.domain) + '/' + encodeURIComponent(p.config.key) + '?r=' + encodeURIComponent((p.config.resolvers || []).join(','));
+    }
+
+    function renderProfilesModal() {
+      var el = document.getElementById('profilesListEl');
+      if (!profiles || !profiles.profiles || !profiles.profiles.length) {
+        el.innerHTML = '<div style="color:var(--text-dim);padding:14px 0;font-size:13px">' + t('no_profiles') + '</div>'; return
+      }
+      var h = '';
+      for (var i = 0; i < profiles.profiles.length; i++) {
+        var p = profiles.profiles[i];
+        var isActive = p.id === activeProfileId;
+        var initial = (p.nickname || p.config.domain || '?').charAt(0).toUpperCase();
+        var shareId = 'share-' + p.id;
+        h += '<div class="profile-row' + (isActive ? ' active-profile' : '') + '" id="prow-' + p.id + '">';
+        h += '<div class="profile-row-main" onclick="activateProfile(\'' + p.id + '\')">';
+        h += '<div class="profile-row-avatar">' + esc(initial) + '</div>';
+        h += '<div class="profile-row-info"><div class="profile-row-name">' + esc(p.nickname || p.config.domain);
+        if (isActive) h += '<span class="active-badge">' + t('active') + '</span>';
+        h += '</div><div class="profile-row-domain">' + esc(p.config.domain) + '</div></div>';
+        h += '<div class="profile-row-btns">';
+        if (isActive) h += '<button class="btn btn-flat btn-sm" onclick="event.stopPropagation();doRescanFromProfiles()" title="' + t('rescan') + '" style="color:var(--success)">&#128260;</button>';
+        h += '<button class="btn btn-flat btn-sm" onclick="event.stopPropagation();toggleSharePanel(\'' + p.id + '\')" title="' + t('share') + '">&#128279;</button>';
+        h += '<button class="btn btn-flat btn-sm" onclick="event.stopPropagation();openProfileEditor(\'' + p.id + '\')" title="' + t('edit') + '">&#9998;</button>';
+        h += '</div></div>';
+        // Share panel (hidden by default)
+        h += '<div class="share-panel" id="' + shareId + '" style="display:none">';
+        h += '<div class="share-panel-inner">';
+        h += '<input class="share-uri-input" type="text" readonly id="suri-' + p.id + '" value="">';
+        h += '<button class="btn btn-primary btn-sm" onclick="copyShareUri(\'' + p.id + '\')">' + t('copy') + '</button>';
+        h += '<button class="btn btn-flat btn-sm" onclick="toggleSharePanel(\'' + p.id + '\')">&#10005;</button>';
+        h += '</div></div>';
+        h += '</div>';
+      }
+      el.innerHTML = h;
+    }
+
+    function toggleSharePanel(id) {
+      // Close all first
+      document.querySelectorAll('.share-panel').forEach(function (sp) { sp.style.display = 'none' });
+      var panel = document.getElementById('share-' + id);
+      if (!panel) return;
+      var uri = buildProfileUri(id);
+      var input = document.getElementById('suri-' + id);
+      if (input) input.value = uri || t('no_config');
+      panel.style.display = 'block';
+    }
+
+    function copyShareUri(id) {
+      var uri = buildProfileUri(id);
+      if (!uri) { showToast(t('no_config')); return }
+      navigator.clipboard.writeText(uri).then(function () { showToast(t('copied')) }).catch(function () {
+        var input = document.getElementById('suri-' + id); if (input) { input.select(); input.setSelectionRange(0, 9999); }
+        showToast(t('copied'));
+      });
+    }
+
+    async function activateProfile(id) {
+      if (id === activeProfileId) { closeProfiles(); return }
+      try {
+        var r = await fetch('/api/profiles/switch', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: id }) });
+        if (!r.ok) return;
+        activeProfileId = id; selectedChannel = 0; channels = []; document.getElementById('progressPanel').innerHTML = ''; document.getElementById('messages').innerHTML = '<div class="empty-state"><p>' + t('switching') + '</p></div>';
+        await loadProfiles(); closeProfiles();
+        await loadChannels();
+        if (channels.length > 0) await selectChannel(1);
+        else { showInitProgress(); await doRefresh() }
+      } catch (e) { }
+    }
+
+    // ===== IMPORT URI =====
+    async function doImportUri() {
+      var errEl = document.getElementById('importError'); var okEl = document.getElementById('importSuccess');
+      errEl.style.display = 'none'; okEl.style.display = 'none';
+      var uri = document.getElementById('importUriInput').value.trim();
+      if (!uri.startsWith('thefeed://')) { errEl.textContent = t('invalid_uri'); errEl.style.display = 'block'; return }
+      try {
+        var body = uri.substring('thefeed://'.length);
+        var qIdx = body.indexOf('?'); var path = qIdx >= 0 ? body.substring(0, qIdx) : body;
+        var params = qIdx >= 0 ? body.substring(qIdx + 1) : '';
+        var parts = path.split('/');
+        var domain = decodeURIComponent(parts[0] || ''); var key = decodeURIComponent(parts[1] || '');
+        var resolvers = [];
+        params.split('&').forEach(function (kv) { var p = kv.split('='); if (p[0] === 'r' && p[1]) resolvers = decodeURIComponent(p[1]).split(',').filter(Boolean) });
+        if (!domain || !key) { errEl.textContent = t('uri_missing'); errEl.style.display = 'block'; return }
+        if (!resolvers.length) resolvers = ['8.8.8.8', '1.1.1.1'];
+        var profile = { id: '', nickname: domain, config: { domain: domain, key: key, resolvers: resolvers, queryMode: 'single', rateLimit: 5 } };
+        var r = await fetch('/api/profiles', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'create', profile: profile }) });
+        if (!r.ok) throw new Error('save failed');
+        okEl.textContent = t('import_success').replace('{d}', domain); okEl.style.display = 'block';
+        document.getElementById('importUriInput').value = '';
+        await loadProfiles(); renderProfilesModal();
+      } catch (e) { errEl.textContent = t('import_error') + ': ' + e.message; errEl.style.display = 'block' }
+    }
+
+    // ===== PROFILE EDITOR =====
+    function openProfileEditor(id) {
+      editingProfileId = id;
+      document.getElementById('profileEditorModal').classList.add('active');
+      document.getElementById('peError').style.display = 'none';
+      document.getElementById('peWarning').style.display = 'none';
+      if (id) {
+        document.getElementById('profileEditorTitle').textContent = t('edit_profile');
+        document.getElementById('peDeleteBtn').style.display = '';
+        var p = profiles && profiles.profiles && profiles.profiles.find(function (x) { return x.id === id });
+        if (p) {
+          document.getElementById('peNick').value = p.nickname || '';
+          document.getElementById('peDomain').value = p.config.domain || '';
+          document.getElementById('peKey').value = p.config.key || '';
+          document.getElementById('peResolvers').value = (p.config.resolvers || []).join('\n');
+          document.getElementById('peQueryMode').value = p.config.queryMode || 'single';
+          document.getElementById('peRateLimit').value = p.config.rateLimit || 5;
+          document.getElementById('peScatter').value = p.config.scatter || 2;
+        }
+        document.getElementById('peChannelSection').style.display = '';
+        var isActive = id === activeProfileId;
+        if (isActive) {
+          document.getElementById('peChannelNote').textContent = t('channel_mgmt_note');
+          document.getElementById('peAddChannelRow').style.display = 'flex';
+          loadEditorChannels();
+        } else {
+          document.getElementById('peChannelNote').textContent = t('channel_mgmt_inactive');
+          document.getElementById('peAddChannelRow').style.display = 'none';
+          document.getElementById('peChannelList').innerHTML = '';
+        }
+      } else {
+        document.getElementById('profileEditorTitle').textContent = t('new_profile');
+        document.getElementById('peDeleteBtn').style.display = 'none';
+        document.getElementById('peNick').value = '';
+        document.getElementById('peDomain').value = '';
+        document.getElementById('peKey').value = '';
+        document.getElementById('peResolvers').value = '';
+        document.getElementById('peQueryMode').value = 'single';
+        document.getElementById('peRateLimit').value = '5';
+        document.getElementById('peScatter').value = '2';
+        document.getElementById('peChannelSection').style.display = 'none';
       }
     }
-  }catch(e){errEl.textContent=e.message;errEl.style.display='block'}
-}
+    function closeProfileEditor() { document.getElementById('profileEditorModal').classList.remove('active'); editingProfileId = null }
 
-// ===== RESCAN =====
-async function doRescanFromProfiles(){
-  closeProfiles();
-  showToast(t('rescan_started'));
-  document.getElementById('progressPanel').innerHTML='';
-  showInitProgress();
-  try{await fetch('/api/rescan',{method:'POST'})}catch(e){}
-  setTimeout(function(){loadChannels().then(function(){if(selectedChannel>0)loadMessages(selectedChannel)})},3000);
-}
-
-async function deleteEditingProfile(){
-  if(!editingProfileId)return;
-  if(!confirm(t('delete')+'?'))return;
-  try{
-    await fetch('/api/profiles',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'delete',profile:{id:editingProfileId}})});
-    await loadProfiles();closeProfileEditor();
-    if(document.getElementById('profilesModal').classList.contains('active'))renderProfilesModal();
-  }catch(e){}
-}
-
-// ===== CHANNELS =====
-async function loadChannels(){
-  try{
-    var r=await fetch('/api/channels');channels=await r.json();if(!channels)channels=[];
-    renderChannels();updateSendPanel();
-    var initBar=document.getElementById('prog-init');if(initBar)initBar.remove();
-    var sr=await fetch('/api/status');var st=await sr.json();
-    telegramLoggedIn=!!st.telegramLoggedIn;
-    if(st.nextFetch){serverNextFetch=st.nextFetch;updateNextFetchDisplay()}
-  }catch(e){}
-}
-
-var _renderChannelsTimer=null;
-function renderChannels(){
-  // Debounce: avoid rapid sequential DOM rebuilds that cause hover flicker
-  if(_renderChannelsTimer)clearTimeout(_renderChannelsTimer);
-  _renderChannelsTimer=setTimeout(_renderChannelsNow,50);
-}
-function _renderChannelsNow(){
-  _renderChannelsTimer=null;
-  var el=document.getElementById('channelList');
-  if(!channels||!channels.length){
-    var _hint=resolverScanHint||(t('no_channels_hint')+' <button onclick="jumpToLog()" style="background:none;border:none;cursor:pointer;font-size:13px;vertical-align:middle;padding:0 2px">&#128220;</button> '+t('no_channels_hint2'));
-    el.innerHTML='<div style="padding:20px;text-align:center;color:var(--text-dim);font-size:13px">'+t('no_channels')+'<br><span id="no-ch-hint" style="font-size:11px;opacity:.7;line-height:1.8">'+_hint+'</span></div>';return
-  }
-  // Fast-path: if channel count matches existing items, just update classes/badges
-  var existingItems=el.querySelectorAll('.ch-item');
-  if(existingItems.length===channels.length){
-    var needsFullRebuild=false;
-    for(var ci=0;ci<channels.length;ci++){
-      var ch=channels[ci],nm=ch.Name||ch.name||'Channel '+(ci+1);
-      if(existingItems[ci].dataset.name!==nm){needsFullRebuild=true;break}
+    async function loadEditorChannels() {
+      var el = document.getElementById('peChannelList');
+      el.innerHTML = '<div style="color:var(--text-dim);font-size:12px">' + t('loading') + '</div>';
+      try {
+        var r = await fetch('/api/admin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command: 'list_channels', arg: '' }) });
+        if (!r.ok) throw new Error(await r.text() || 'failed');
+        var data = await r.json();
+        var chans = (data.result || '').split('\n').filter(function (s) { return s.trim() });
+        if (!chans.length) { el.innerHTML = '<div style="color:var(--text-dim);font-size:12px">' + t('no_channels') + '</div>'; return }
+        var h = '';
+        for (var i = 0; i < chans.length; i++) {
+          h += '<div class="channel-list-item"><span>' + esc(chans[i]) + '</span>';
+          h += '<button class="btn btn-flat btn-sm" style="color:var(--error)" data-ch="' + esc(chans[i]) + '" onclick="removeChannelEditor(this.dataset.ch)">' + t('remove') + '</button></div>';
+        }
+        el.innerHTML = h;
+      } catch (e) { el.innerHTML = '<div style="color:var(--error);font-size:12px">' + esc(e.message) + '</div>' }
     }
-    if(!needsFullRebuild){
-      for(var ui=0;ui<channels.length;ui++){
-        var num=ui+1;
-        existingItems[ui].classList.toggle('active',num===selectedChannel);
-        var lastID=channels[ui].LastMsgID||channels[ui].lastMsgID||0;
-        var showBadge=previousMsgIDs[num]>0&&lastID>previousMsgIDs[num]&&num!==selectedChannel;
-        var previewEl=existingItems[ui].querySelector('.ch-preview');
-        if(previewEl)previewEl.innerHTML=showBadge?'<span class="ch-badge">NEW</span>':'';
+
+    async function addChannelEditor() {
+      var input = document.getElementById('peAddChannelInput');
+      var u = input.value.trim().replace(/^@/, ''); if (!u) return;
+      try {
+        var r = await fetch('/api/admin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command: 'add_channel', arg: u }) });
+        if (!r.ok) { showToast(await r.text() || 'Failed'); return }
+        input.value = ''; addLogLine('Channel added: ' + u); loadEditorChannels();
+      } catch (e) { showToast(e.message) }
+    }
+
+    async function removeChannelEditor(u) {
+      try {
+        var r = await fetch('/api/admin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command: 'remove_channel', arg: u }) });
+        if (!r.ok) { showToast(await r.text() || 'Failed'); return }
+        addLogLine('Channel removed: ' + u); loadEditorChannels();
+      } catch (e) { showToast(e.message) }
+    }
+
+    async function saveProfile() {
+      var errEl = document.getElementById('peError'); errEl.style.display = 'none';
+      var nick = document.getElementById('peNick').value.trim();
+      var domain = document.getElementById('peDomain').value.trim();
+      var key = document.getElementById('peKey').value;
+      var resolvers = document.getElementById('peResolvers').value.trim().split(/[\n,]+/).map(function (s) { return s.trim() }).filter(Boolean);
+      if (!domain || !key || !resolvers.length) { errEl.textContent = t('resolvers') + ' / ' + t('domain') + ' / ' + t('passphrase'); errEl.style.display = 'block'; return }
+      var profile = { id: editingProfileId || '', nickname: nick || domain, config: { domain: domain, key: key, resolvers: resolvers, queryMode: document.getElementById('peQueryMode').value, rateLimit: parseFloat(document.getElementById('peRateLimit').value) || 5, scatter: parseInt(document.getElementById('peScatter').value) || 2 } };
+      var action = editingProfileId ? 'update' : 'create';
+      var wasFirst = !profiles || !profiles.profiles || profiles.profiles.length === 0;
+      try {
+        var r = await fetch('/api/profiles', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: action, profile: profile }) });
+        if (!r.ok) { errEl.textContent = await r.text(); errEl.style.display = 'block'; return }
+        await loadProfiles();
+        var savedEditId = editingProfileId;
+        closeProfileEditor();
+        if (wasFirst) {
+          closeProfiles();
+          document.getElementById('progressPanel').innerHTML = '';
+          document.getElementById('messages').innerHTML = '<div class="empty-state"><p>' + t('loading') + '</p></div>';
+          showInitProgress();
+        } else {
+          renderProfilesModal();
+          // Only rescan if we updated the currently active profile
+          if (savedEditId && savedEditId === activeProfileId) {
+            showToast(t('rescan_started'));
+            document.getElementById('progressPanel').innerHTML = '';
+            showInitProgress();
+            await loadChannels();
+            if (selectedChannel > 0) await loadMessages(selectedChannel);
+          }
+        }
+      } catch (e) { errEl.textContent = e.message; errEl.style.display = 'block' }
+    }
+
+    // ===== RESCAN =====
+    async function doRescanFromProfiles() {
+      closeProfiles();
+      showToast(t('rescan_started'));
+      document.getElementById('progressPanel').innerHTML = '';
+      showInitProgress();
+      try { await fetch('/api/rescan', { method: 'POST' }) } catch (e) { }
+      setTimeout(function () { loadChannels().then(function () { if (selectedChannel > 0) loadMessages(selectedChannel) }) }, 3000);
+    }
+
+    async function deleteEditingProfile() {
+      if (!editingProfileId) return;
+      if (!confirm(t('delete') + '?')) return;
+      try {
+        await fetch('/api/profiles', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'delete', profile: { id: editingProfileId } }) });
+        await loadProfiles(); closeProfileEditor();
+        if (document.getElementById('profilesModal').classList.contains('active')) renderProfilesModal();
+      } catch (e) { }
+    }
+
+    // ===== CHANNELS =====
+    async function loadChannels() {
+      try {
+        var r = await fetch('/api/channels'); channels = await r.json(); if (!channels) channels = [];
+        renderChannels(); updateSendPanel();
+        var initBar = document.getElementById('prog-init'); if (initBar) initBar.remove();
+        var sr = await fetch('/api/status'); var st = await sr.json();
+        telegramLoggedIn = !!st.telegramLoggedIn;
+        if (st.nextFetch) { serverNextFetch = st.nextFetch; updateNextFetchDisplay() }
+      } catch (e) { }
+    }
+
+    var _renderChannelsTimer = null;
+    function renderChannels() {
+      // Debounce: avoid rapid sequential DOM rebuilds that cause hover flicker
+      if (_renderChannelsTimer) clearTimeout(_renderChannelsTimer);
+      _renderChannelsTimer = setTimeout(_renderChannelsNow, 50);
+    }
+    function _renderChannelsNow() {
+      _renderChannelsTimer = null;
+      var el = document.getElementById('channelList');
+      if (!channels || !channels.length) {
+        var _hint = resolverScanHint || (t('no_channels_hint') + ' <button onclick="jumpToLog()" style="background:none;border:none;cursor:pointer;font-size:13px;vertical-align:middle;padding:0 2px">&#128220;</button> ' + t('no_channels_hint2'));
+        el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-dim);font-size:13px">' + t('no_channels') + '<br><span id="no-ch-hint" style="font-size:11px;opacity:.7;line-height:1.8">' + _hint + '</span></div>'; return
       }
-      _updateRefreshBadge();return;
+      // Fast-path: if channel count matches existing items, just update classes/badges
+      var existingItems = el.querySelectorAll('.ch-item');
+      if (existingItems.length === channels.length) {
+        var needsFullRebuild = false;
+        for (var ci = 0; ci < channels.length; ci++) {
+          var ch = channels[ci], nm = ch.Name || ch.name || 'Channel ' + (ci + 1);
+          if (existingItems[ci].dataset.name !== nm) { needsFullRebuild = true; break }
+        }
+        if (!needsFullRebuild) {
+          for (var ui = 0; ui < channels.length; ui++) {
+            var num = ui + 1;
+            existingItems[ui].classList.toggle('active', num === selectedChannel);
+            var lastID = channels[ui].LastMsgID || channels[ui].lastMsgID || 0;
+            var showBadge = previousMsgIDs[num] > 0 && lastID > previousMsgIDs[num] && num !== selectedChannel;
+            var previewEl = existingItems[ui].querySelector('.ch-preview');
+            if (previewEl) previewEl.innerHTML = showBadge ? '<span class="ch-badge">NEW</span>' : '';
+          }
+          _updateRefreshBadge(); return;
+        }
+      }
+      var pubs = [], privs = [];
+      for (var i = 0; i < channels.length; i++) { var c = channels[i]; (c.ChatType === 1 || c.chatType === 1 ? privs : pubs).push({ ch: c, idx: i }) }
+      function section(title, items) {
+        if (!items.length) return ''; var h = '';
+        if (title) h += '<div class="channel-section-title">' + esc(title) + '</div>';
+        for (var j = 0; j < items.length; j++) {
+          var e = items[j], num2 = e.idx + 1;
+          var name = e.ch.Name || e.ch.name || 'Channel ' + num2;
+          var isPriv = e.ch.ChatType === 1 || e.ch.chatType === 1;
+          var active = num2 === selectedChannel ? ' active' : '';
+          var lastID = e.ch.LastMsgID || e.ch.lastMsgID || 0;
+          var badge = (previousMsgIDs[num2] > 0 && lastID > previousMsgIDs[num2] && num2 !== selectedChannel) ? '<span class="ch-badge">NEW</span>' : '';
+          h += '<div class="ch-item' + active + '" data-name="' + esc(name) + '" onclick="selectChannel(' + num2 + ')">';
+          h += '<div class="ch-avatar">' + esc(name.charAt(0).toUpperCase()) + '</div>';
+          h += '<div class="ch-info"><div class="ch-name">' + esc(name) + (isPriv ? '<span class="ch-type-tag">' + t('private') + '</span>' : '') + '</div>';
+          h += '<div class="ch-preview">' + badge + '</div></div></div>';
+        }
+        return h;
+      }
+      el.innerHTML = section('', pubs) + section(t('private'), privs);
+      _updateRefreshBadge();
     }
-  }
-  var pubs=[],privs=[];
-  for(var i=0;i<channels.length;i++){var c=channels[i];(c.ChatType===1||c.chatType===1?privs:pubs).push({ch:c,idx:i})}
-  function section(title,items){
-    if(!items.length)return'';var h='';
-    if(title)h+='<div class="channel-section-title">'+esc(title)+'</div>';
-    for(var j=0;j<items.length;j++){
-      var e=items[j],num2=e.idx+1;
-      var name=e.ch.Name||e.ch.name||'Channel '+num2;
-      var isPriv=e.ch.ChatType===1||e.ch.chatType===1;
-      var active=num2===selectedChannel?' active':'';
-      var lastID=e.ch.LastMsgID||e.ch.lastMsgID||0;
-      var badge=(previousMsgIDs[num2]>0&&lastID>previousMsgIDs[num2]&&num2!==selectedChannel)?'<span class="ch-badge">NEW</span>':'';
-      h+='<div class="ch-item'+active+'" data-name="'+esc(name)+'" onclick="selectChannel('+num2+')">';
-      h+='<div class="ch-avatar">'+esc(name.charAt(0).toUpperCase())+'</div>';
-      h+='<div class="ch-info"><div class="ch-name">'+esc(name)+(isPriv?'<span class="ch-type-tag">'+t('private')+'</span>':'')+'</div>';
-      h+='<div class="ch-preview">'+badge+'</div></div></div>';
+    function _updateRefreshBadge() {
+      var hasNew = false;
+      for (var k = 0; k < channels.length; k++) {
+        var num3 = k + 1, lid = channels[k].LastMsgID || channels[k].lastMsgID || 0;
+        if (previousMsgIDs[num3] > 0 && lid > previousMsgIDs[num3] && num3 !== selectedChannel) { hasNew = true; break }
+      }
+      document.getElementById('refreshBtn').classList.toggle('refresh-has-new', hasNew);
     }
-    return h;
-  }
-  el.innerHTML=section('',pubs)+section(t('private'),privs);
-  _updateRefreshBadge();
-}
-function _updateRefreshBadge(){
-  var hasNew=false;
-  for(var k=0;k<channels.length;k++){
-    var num3=k+1,lid=channels[k].LastMsgID||channels[k].lastMsgID||0;
-    if(previousMsgIDs[num3]>0&&lid>previousMsgIDs[num3]&&num3!==selectedChannel){hasNew=true;break}
-  }
-  document.getElementById('refreshBtn').classList.toggle('refresh-has-new',hasNew);
-}
 
-async function selectChannel(num){
-  selectedChannel=num;
-  openChat();
-  var ch=channels[num-1];var name=(ch&&(ch.Name||ch.name))||'Channel '+num;
-  document.getElementById('chatName').textContent=name;
-  renderChannels();updateSendPanel();
-  document.getElementById('messages').innerHTML='<div class="empty-state"><p>'+t('loading')+'</p></div>';
-  document.getElementById('scrollDownBtn').classList.remove('visible');
-  // Show immediate feedback progress bar
-  showChannelFetchProgress(num,name);
-  await loadMessages(num);
-  await doRefresh(true);
-}
-
-function showChannelFetchProgress(num,name){
-  var panel=document.getElementById('progressPanel');
-  var id='prog-fetch-ch-'+num;
-  var existing=document.getElementById(id);
-  if(existing)return;
-  var item=document.createElement('div');item.id=id;item.className='progress-item';
-  item.dataset.lastUpdate=Date.now();
-  item.innerHTML='<button class="progress-close" onclick="this.parentNode.remove()" title="Dismiss">&times;</button><div class="progress-label">'+t('fetching_channel')+' '+(name||num)+'</div><div class="progress-bar"><div class="progress-fill" style="width:40%;animation:prog-pulse 1.5s ease-in-out infinite"></div></div>';
-  panel.insertBefore(item,panel.firstChild);
-  // Auto-remove after messages load or after timeout
-  setTimeout(function(){var el=document.getElementById(id);if(el)el.remove()},15000);
-}
-
-function updateSendPanel(){
-  var panel=document.getElementById('sendPanel');
-  var ch=channels[selectedChannel-1];
-  var canSend=!!(ch&&(ch.CanSend||ch.canSend));
-  if(selectedChannel>0&&telegramLoggedIn&&canSend)panel.classList.add('visible');
-  else panel.classList.remove('visible');
-}
-
-// TODO: Remove cleanupOldLocalStorageKeys() once all clients have migrated.
-// This purges thefeed_msgs_* keys written by the old HTML-side message cache.
-function cleanupOldLocalStorageKeys(){
-  try{
-    var toDelete=[];
-    for(var i=0;i<localStorage.length;i++){
-      var k=localStorage.key(i);
-      if(k&&k.startsWith('thefeed_msgs_'))toDelete.push(k);
+    async function selectChannel(num) {
+      selectedChannel = num;
+      openChat();
+      var ch = channels[num - 1]; var name = (ch && (ch.Name || ch.name)) || 'Channel ' + num;
+      document.getElementById('chatName').textContent = name;
+      renderChannels(); updateSendPanel();
+      document.getElementById('messages').innerHTML = '<div class="empty-state"><p>' + t('loading') + '</p></div>';
+      document.getElementById('scrollDownBtn').classList.remove('visible');
+      // Show immediate feedback progress bar
+      showChannelFetchProgress(num, name);
+      await loadMessages(num);
+      await doRefresh(true);
     }
-    for(var j=0;j<toDelete.length;j++)localStorage.removeItem(toDelete[j]);
-  }catch(e){}
-}
 
-// ===== MESSAGES =====
-async function loadMessages(chNum){
-  try{
-    var r=await fetch('/api/messages/'+chNum);if(chNum!==selectedChannel)return;
-    var data=await r.json();if(chNum!==selectedChannel)return;
-    renderMessages(data.messages||[], data.gaps||[]);
-    // Remove fetch progress bar for this channel
-    var fetchBar=document.getElementById('prog-fetch-ch-'+chNum);if(fetchBar)fetchBar.remove();
-    if(channels[chNum-1]){previousMsgIDs[chNum]=channels[chNum-1].LastMsgID||channels[chNum-1].lastMsgID||0;renderChannels()}
-  }catch(e){}
-}
-
-function renderMessages(msgs, gaps){
-  var el=document.getElementById('messages');
-  if(!msgs||!msgs.length){el.innerHTML='<div class="empty-state"><p>'+t('no_messages')+'</p><p style="font-size:12px;opacity:.6;margin-top:6px">'+t('no_messages_hint')+'</p></div>';return}
-  // Check if user is near the bottom before re-render (within 150px)
-  var wasAtBottom=el.scrollHeight-el.scrollTop-el.clientHeight<150;
-  var isFirstRender=el.querySelector('.empty-state')!==null||el.querySelector('.msg')===null;
-  msgs.sort(function(a,b){return(a.Timestamp||a.timestamp||0)-(b.Timestamp||b.timestamp||0)});
-  var html='',lastDate='';
-  // Build a lookup: message ID → gap count to insert BEFORE that message.
-  var gapBefore={};
-  if(gaps){for(var g=0;g<gaps.length;g++){gapBefore[gaps[g].before_id]=gaps[g].count}}
-  currentMsgTexts=[];
-  var dateLocale=lang==='fa'?'fa-IR':'en-US';
-  var dateOpts=lang==='fa'?{year:'numeric',month:'long',day:'numeric',calendar:'persian'}:{year:'numeric',month:'long',day:'numeric'};
-  for(var i=0;i<msgs.length;i++){
-    var msg=msgs[i];
-    var id=msg.ID||msg.id;
-    if(gapBefore[id]){
-      html+='<div class="msg-gap-sep"><span>'+t('missed_messages').replace('{n}',gapBefore[id])+'</span></div>';
+    function showChannelFetchProgress(num, name) {
+      var panel = document.getElementById('progressPanel');
+      var id = 'prog-fetch-ch-' + num;
+      var existing = document.getElementById(id);
+      if (existing) return;
+      var item = document.createElement('div'); item.id = id; item.className = 'progress-item';
+      item.dataset.lastUpdate = Date.now();
+      item.innerHTML = '<button class="progress-close" onclick="this.parentNode.remove()" title="Dismiss">&times;</button><div class="progress-label">' + t('fetching_channel') + ' ' + (name || num) + '</div><div class="progress-bar"><div class="progress-fill" style="width:40%;animation:prog-pulse 1.5s ease-in-out infinite"></div></div>';
+      panel.insertBefore(item, panel.firstChild);
+      // Auto-remove after messages load or after timeout
+      setTimeout(function () { var el = document.getElementById(id); if (el) el.remove() }, 15000);
     }
-    var ts=new Date((msg.Timestamp||msg.timestamp)*1000);
-    var dateStr=ts.toLocaleDateString(dateLocale,dateOpts);
-    if(dateStr!==lastDate){html+='<div class="msg-date-sep"><span dir="auto">'+dateStr+'</span></div>';lastDate=dateStr}
-    var timeStr=ts.toLocaleTimeString(dateLocale,{hour:'2-digit',minute:'2-digit'});
-    var text=msg.Text||msg.text||'';
-    currentMsgTexts.push(text);
-    var mediaHtml='',textHtml=esc(text);
-    var mediaTypes=['[IMAGE]','[VIDEO]','[FILE]','[AUDIO]','[STICKER]','[GIF]','[POLL]','[CONTACT]','[LOCATION]'];
-    for(var m=0;m<mediaTypes.length;m++){
-      if(text.indexOf(mediaTypes[m])===0){
-        mediaHtml='<div class="media-tag">'+mediaTypes[m]+'</div>';
-        textHtml=esc(text.substring(mediaTypes[m].length).replace(/^\n/,''));break
+
+    function updateSendPanel() {
+      var panel = document.getElementById('sendPanel');
+      var ch = channels[selectedChannel - 1];
+      var canSend = !!(ch && (ch.CanSend || ch.canSend));
+      if (selectedChannel > 0 && telegramLoggedIn && canSend) panel.classList.add('visible');
+      else panel.classList.remove('visible');
+    }
+
+    // TODO: Remove cleanupOldLocalStorageKeys() once all clients have migrated.
+    // This purges thefeed_msgs_* keys written by the old HTML-side message cache.
+    function cleanupOldLocalStorageKeys() {
+      try {
+        var toDelete = [];
+        for (var i = 0; i < localStorage.length; i++) {
+          var k = localStorage.key(i);
+          if (k && k.startsWith('thefeed_msgs_')) toDelete.push(k);
+        }
+        for (var j = 0; j < toDelete.length; j++)localStorage.removeItem(toDelete[j]);
+      } catch (e) { }
+    }
+
+    // ===== MESSAGES =====
+    async function loadMessages(chNum) {
+      try {
+        var r = await fetch('/api/messages/' + chNum); if (chNum !== selectedChannel) return;
+        var data = await r.json(); if (chNum !== selectedChannel) return;
+        renderMessages(data.messages || [], data.gaps || []);
+        // Remove fetch progress bar for this channel
+        var fetchBar = document.getElementById('prog-fetch-ch-' + chNum); if (fetchBar) fetchBar.remove();
+        if (channels[chNum - 1]) { previousMsgIDs[chNum] = channels[chNum - 1].LastMsgID || channels[chNum - 1].lastMsgID || 0; renderChannels() }
+      } catch (e) { }
+    }
+
+    function renderMessages(msgs, gaps) {
+      var el = document.getElementById('messages');
+      if (!msgs || !msgs.length) { el.innerHTML = '<div class="empty-state"><p>' + t('no_messages') + '</p><p style="font-size:12px;opacity:.6;margin-top:6px">' + t('no_messages_hint') + '</p></div>'; return }
+      // Check if user is near the bottom before re-render (within 150px)
+      var wasAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 150;
+      var isFirstRender = el.querySelector('.empty-state') !== null || el.querySelector('.msg') === null;
+      msgs.sort(function (a, b) { return (a.Timestamp || a.timestamp || 0) - (b.Timestamp || b.timestamp || 0) });
+      var html = '', lastDate = '';
+      // Build a lookup: message ID → gap count to insert BEFORE that message.
+      var gapBefore = {};
+      if (gaps) { for (var g = 0; g < gaps.length; g++) { gapBefore[gaps[g].before_id] = gaps[g].count } }
+      currentMsgTexts = [];
+      var dateLocale = lang === 'fa' ? 'fa-IR' : 'en-US';
+      var dateOpts = lang === 'fa' ? { year: 'numeric', month: 'long', day: 'numeric', calendar: 'persian' } : { year: 'numeric', month: 'long', day: 'numeric' };
+      for (var i = 0; i < msgs.length; i++) {
+        var msg = msgs[i];
+        var id = msg.ID || msg.id;
+        if (gapBefore[id]) {
+          html += '<div class="msg-gap-sep"><span>' + t('missed_messages').replace('{n}', gapBefore[id]) + '</span></div>';
+        }
+        var ts = new Date((msg.Timestamp || msg.timestamp) * 1000);
+        var dateStr = ts.toLocaleDateString(dateLocale, dateOpts);
+        if (dateStr !== lastDate) { html += '<div class="msg-date-sep"><span dir="auto">' + dateStr + '</span></div>'; lastDate = dateStr }
+        var timeStr = ts.toLocaleTimeString(dateLocale, { hour: '2-digit', minute: '2-digit' });
+        var text = msg.Text || msg.text || '';
+        currentMsgTexts.push(text);
+        var mediaHtml = '', textHtml = esc(text);
+        var mediaTypes = ['[IMAGE]', '[VIDEO]', '[FILE]', '[AUDIO]', '[STICKER]', '[GIF]', '[POLL]', '[CONTACT]', '[LOCATION]'];
+        for (var m = 0; m < mediaTypes.length; m++) {
+          if (text.indexOf(mediaTypes[m]) === 0) {
+            mediaHtml = '<div class="media-tag">' + mediaTypes[m] + '</div>';
+            textHtml = esc(text.substring(mediaTypes[m].length).replace(/^\n/, '')); break
+          }
+        }
+        html += '<div class="msg' + (isPersian(text) ? ' rtl-msg' : '') + '" dir="auto">' + mediaHtml + textHtml + '<div class="msg-meta"><button class="msg-copy-btn" onclick="copyMsg(' + i + ')" title="' + t('copy') + '">&#128203;</button><span>#' + id + '</span><span>' + timeStr + '</span></div></div>';
+      }
+      el.innerHTML = html;
+      if (isFirstRender || wasAtBottom) { el.scrollTop = el.scrollHeight; document.getElementById('scrollDownBtn').classList.remove('visible'); }
+    }
+
+    // ===== LOG =====
+    function addLogLine(line) {
+      var el = document.getElementById('logPanel');
+      var div = document.createElement('div');
+      var cls = 'inf';
+      if (typeof line === 'string') {
+        // Handle structured resolver scan events — show progress bar, suppress from log
+        if (line.includes('RESOLVER_SCAN ')) { updateResolverScanDisplay(line); return }
+        if (line.includes('SERVER_FETCH_WAIT ')) { updateServerFetchDisplay(line); return }
+        if (line.includes('Error:') || line.includes('error') || line.includes('Invalid passphrase')) cls = 'err';
+        else if (line.includes('Warning:')) cls = 'warn';
+        else if (line.includes('OK') || line.includes('success') || line.includes('done')) cls = 'ok';
+        else if (line.match(/\d+%/)) { cls = 'prog'; updateProgressDisplay(line); return }
+      }
+      div.className = 'log-line ' + cls; div.textContent = line;
+      el.appendChild(div); el.scrollTop = el.scrollHeight;
+      while (el.children.length > 200) el.removeChild(el.firstChild);
+    }
+
+    function updateServerFetchDisplay(line) {
+      var panel = document.getElementById('progressPanel');
+      var item = document.getElementById('prog-server-fetch');
+      // SERVER_FETCH_WAIT start <totalSec>
+      var startMatch = line.match(/SERVER_FETCH_WAIT start (\d+)/);
+      if (startMatch) {
+        var total = parseInt(startMatch[1]);
+        if (!item) {
+          item = document.createElement('div'); item.id = 'prog-server-fetch'; item.className = 'progress-item';
+          item.innerHTML = '<button class="progress-close" onclick="this.parentNode.remove()" title="Dismiss">&times;</button><div class="progress-label"></div><div class="progress-bar"><div class="progress-fill" style="width:0%;transition:width 1s linear"></div></div>';
+          panel.insertBefore(item, panel.firstChild);
+        }
+        item.dataset.total = total;
+        item.querySelector('.progress-label').textContent = t('server_fetch_wait') + ' — ' + total + 's';
+        item.querySelector('.progress-fill').style.width = '0%';
+        item.dataset.lastUpdate = Date.now();
+        return;
+      }
+      if (!item) return;
+      // SERVER_FETCH_WAIT tick <remaining>/<total>
+      var tickMatch = line.match(/SERVER_FETCH_WAIT tick (\d+)\/(\d+)/);
+      if (tickMatch) {
+        var remaining = parseInt(tickMatch[1]), total2 = parseInt(tickMatch[2]);
+        var pct = Math.round(((total2 - remaining) / total2) * 100);
+        item.querySelector('.progress-label').textContent = t('server_fetch_wait') + ' — ' + remaining + 's';
+        item.querySelector('.progress-fill').style.width = pct + '%';
+        item.dataset.lastUpdate = Date.now();
+        return;
+      }
+      // SERVER_FETCH_WAIT done
+      if (line.includes('SERVER_FETCH_WAIT done')) {
+        item.querySelector('.progress-label').textContent = t('loading');
+        item.querySelector('.progress-fill').style.width = '100%';
+        setTimeout(function () { if (item.parentNode) item.parentNode.removeChild(item) }, 1200);
       }
     }
-    html+='<div class="msg'+(isPersian(text)?' rtl-msg':'')+'" dir="auto">'+mediaHtml+textHtml+'<div class="msg-meta"><button class="msg-copy-btn" onclick="copyMsg('+i+')" title="'+t('copy')+'">&#128203;</button><span>#'+id+'</span><span>'+timeStr+'</span></div></div>';
-  }
-  el.innerHTML=html;
-  if(isFirstRender||wasAtBottom){el.scrollTop=el.scrollHeight;document.getElementById('scrollDownBtn').classList.remove('visible');}
-}
 
-// ===== LOG =====
-function addLogLine(line){
-  var el=document.getElementById('logPanel');
-  var div=document.createElement('div');
-  var cls='inf';
-  if(typeof line==='string'){
-    // Handle structured resolver scan events — show progress bar, suppress from log
-    if(line.includes('RESOLVER_SCAN ')){updateResolverScanDisplay(line);return}
-    if(line.includes('SERVER_FETCH_WAIT ')){updateServerFetchDisplay(line);return}
-    if(line.includes('Error:')||line.includes('error')||line.includes('Invalid passphrase'))cls='err';
-    else if(line.includes('Warning:'))cls='warn';
-    else if(line.includes('OK')||line.includes('success')||line.includes('done'))cls='ok';
-    else if(line.match(/\d+%/)){cls='prog';updateProgressDisplay(line);return}
-  }
-  div.className='log-line '+cls;div.textContent=line;
-  el.appendChild(div);el.scrollTop=el.scrollHeight;
-  while(el.children.length>200)el.removeChild(el.firstChild);
-}
-
-function updateServerFetchDisplay(line){
-  var panel=document.getElementById('progressPanel');
-  var item=document.getElementById('prog-server-fetch');
-  // SERVER_FETCH_WAIT start <totalSec>
-  var startMatch=line.match(/SERVER_FETCH_WAIT start (\d+)/);
-  if(startMatch){
-    var total=parseInt(startMatch[1]);
-    if(!item){
-      item=document.createElement('div');item.id='prog-server-fetch';item.className='progress-item';
-      item.innerHTML='<button class="progress-close" onclick="this.parentNode.remove()" title="Dismiss">&times;</button><div class="progress-label"></div><div class="progress-bar"><div class="progress-fill" style="width:0%;transition:width 1s linear"></div></div>';
-      panel.insertBefore(item,panel.firstChild);
+    function ensureResolverScanItem() {
+      var item = document.getElementById('prog-resolvers');
+      if (!item) {
+        var panel = document.getElementById('progressPanel');
+        // Remove the generic init loading bar when resolver scan takes over
+        var initItem = document.getElementById('prog-init'); if (initItem) initItem.remove();
+        item = document.createElement('div'); item.id = 'prog-resolvers'; item.className = 'progress-item';
+        item.innerHTML = '<button class="progress-close" onclick="this.parentNode.remove()" title="Dismiss">&times;</button><div class="progress-label"></div><div class="progress-bar"><div class="progress-fill" style="width:0%"></div></div>';
+        panel.insertBefore(item, panel.firstChild);
+      }
+      return item;
     }
-    item.dataset.total=total;
-    item.querySelector('.progress-label').textContent=t('server_fetch_wait')+' — '+total+'s';
-    item.querySelector('.progress-fill').style.width='0%';
-    item.dataset.lastUpdate=Date.now();
-    return;
-  }
-  if(!item)return;
-  // SERVER_FETCH_WAIT tick <remaining>/<total>
-  var tickMatch=line.match(/SERVER_FETCH_WAIT tick (\d+)\/(\d+)/);
-  if(tickMatch){
-    var remaining=parseInt(tickMatch[1]),total2=parseInt(tickMatch[2]);
-    var pct=Math.round(((total2-remaining)/total2)*100);
-    item.querySelector('.progress-label').textContent=t('server_fetch_wait')+' — '+remaining+'s';
-    item.querySelector('.progress-fill').style.width=pct+'%';
-    item.dataset.lastUpdate=Date.now();
-    return;
-  }
-  // SERVER_FETCH_WAIT done
-  if(line.includes('SERVER_FETCH_WAIT done')){
-    item.querySelector('.progress-label').textContent=t('loading');
-    item.querySelector('.progress-fill').style.width='100%';
-    setTimeout(function(){if(item.parentNode)item.parentNode.removeChild(item)},1200);
-  }
-}
 
-function ensureResolverScanItem(){
-  var item=document.getElementById('prog-resolvers');
-  if(!item){
-    var panel=document.getElementById('progressPanel');
-    // Remove the generic init loading bar when resolver scan takes over
-    var initItem=document.getElementById('prog-init');if(initItem)initItem.remove();
-    item=document.createElement('div');item.id='prog-resolvers';item.className='progress-item';
-    item.innerHTML='<button class="progress-close" onclick="this.parentNode.remove()" title="Dismiss">&times;</button><div class="progress-label"></div><div class="progress-bar"><div class="progress-fill" style="width:0%"></div></div>';
-    panel.insertBefore(item,panel.firstChild);
-  }
-  return item;
-}
-
-function updateResolverScanDisplay(line){
-  var panel=document.getElementById('progressPanel');
-  var item=document.getElementById('prog-resolvers');
-  // RESOLVER_SCAN start N
-  var startMatch=line.match(/RESOLVER_SCAN start (\d+)/);
-  if(startMatch){
-    var total=parseInt(startMatch[1]);
-    resolverScanDone=0;resolverScanHealthy=0;resolverScanTotal=total;
-    item=ensureResolverScanItem();
-    item.dataset.total=total;
-    item.querySelector('.progress-label').textContent=t('scanning_resolvers')+' 0/'+total;
-    item.querySelector('.progress-fill').style.width='0%';
-    item.dataset.lastUpdate=Date.now();
-    resolverScanHint=t('scanning_resolvers')+'... <button onclick="jumpToLog()" style="background:none;border:none;cursor:pointer;font-size:13px;vertical-align:middle;padding:0 2px">&#128220;</button>';
-    var hintEl=document.getElementById('no-ch-hint');if(hintEl)hintEl.innerHTML=resolverScanHint;
-    return;
-  }
-  // If the item was removed (e.g. SSE reconnect cleared the panel) but scan
-  // is still in progress, re-create it so progress updates keep showing.
-  if(!item)item=ensureResolverScanItem();
-  // RESOLVER_SCAN progress D/T healthy=H
-  var progMatch=line.match(/RESOLVER_SCAN progress (\d+)\/(\d+)(?: healthy=(\d+))?/);
-  if(progMatch){
-    var done=parseInt(progMatch[1]),tot=parseInt(progMatch[2]),hlthy=progMatch[3]!==undefined?parseInt(progMatch[3]):null;
-    // Use authoritative values from the structured message.
-    resolverScanDone=done;resolverScanTotal=tot;
-    if(hlthy!==null)resolverScanHealthy=hlthy;
-    var pct=Math.round((done/tot)*100);
-    var label=t('scanning_resolvers')+' '+done+'/'+tot+' \u2713'+resolverScanHealthy;
-    item.querySelector('.progress-label').textContent=label;
-    item.querySelector('.progress-fill').style.width=pct+'%';
-    item.dataset.lastUpdate=Date.now();
-    resolverScanHint=t('scanning_resolvers')+' ('+done+'/'+tot+', \u2713'+resolverScanHealthy+')'+ ' <button onclick="jumpToLog()" style="background:none;border:none;cursor:pointer;font-size:13px;vertical-align:middle;padding:0 2px">&#128220;</button>';
-    var hintEl=document.getElementById('no-ch-hint');if(hintEl)hintEl.innerHTML=resolverScanHint;
-    return;
-  }
-  // RESOLVER_SCAN done K/T
-  var doneMatch=line.match(/RESOLVER_SCAN done (\d+)\/(\d+)/);
-  if(doneMatch){
-    var healthy=parseInt(doneMatch[1]),total2=parseInt(doneMatch[2]);
-    resolverScanDone=total2;resolverScanHealthy=healthy;resolverScanTotal=total2;
-    item.querySelector('.progress-label').textContent=t('scanning_resolvers')+': '+healthy+'/'+total2+' active';
-    item.querySelector('.progress-fill').style.width='100%';
-    resolverScanHint='';
-    // Remove init loading bar if it's still around
-    var initItem=document.getElementById('prog-init');if(initItem)initItem.remove();
-    var hintEl=document.getElementById('no-ch-hint');if(hintEl)hintEl.innerHTML=t('no_channels_hint')+' <button onclick="jumpToLog()" style="background:none;border:none;cursor:pointer;font-size:13px;vertical-align:middle;padding:0 2px">&#128220;</button> '+t('no_channels_hint2');
-    setTimeout(function(){if(item.parentNode)item.parentNode.removeChild(item)},2000);
-    // Scan is done — load channels in case the SSE 'update' event was dropped.
-    setTimeout(function(){loadChannels().then(function(){if(channels.length>0&&selectedChannel===0)selectChannel(1)})},3000);
-  }
-}
-
-function updateProgressDisplay(line){
-  var match=line.match(/Channel\s+(\d+)/);if(!match)return;
-  var channelNum=parseInt(match[1]);
-  var fracMatch=line.match(/\((\d+)\/(\d+)\)/);
-  var completed=fracMatch?parseInt(fracMatch[1]):0;
-  var total=fracMatch?parseInt(fracMatch[2]):0;
-  var pct=line.match(/(\d+)%/);var percent=pct?parseInt(pct[1]):0;
-  var ch=channels[channelNum-1];
-  var chName=ch&&(ch.Name||ch.name)||'';
-  var label=(fracMatch?(completed+'/'+total):('Channel '+channelNum))+(chName?' ('+chName+')':'');
-  var panel=document.getElementById('progressPanel');
-  var item=document.getElementById('prog-ch-'+channelNum);
-  if(!item){
-    item=document.createElement('div');item.id='prog-ch-'+channelNum;item.className='progress-item';
-    item.innerHTML='<button class="progress-close" onclick="this.parentNode.remove()" title="Dismiss">&times;</button><div class="progress-label"></div><div class="progress-bar"><div class="progress-fill" style="width:0%"></div></div>';
-    panel.appendChild(item);
-  }
-  item.querySelector('.progress-label').textContent=label;
-  item.querySelector('.progress-fill').style.width=percent+'%';
-  // Mark last-update time so stale items can be cleaned
-  item.dataset.lastUpdate=Date.now();
-  if(percent>=100)setTimeout(function(){if(item.parentNode)item.parentNode.removeChild(item)},800);
-}
-
-// Periodically remove stale progress items that stopped updating (missed 'done' event)
-setInterval(function(){
-  var now=Date.now();
-  var items=document.getElementById('progressPanel').querySelectorAll('.progress-item');
-  for(var i=0;i<items.length;i++){
-    var lu=parseInt(items[i].dataset.lastUpdate||'0');
-    if(lu>0&&now-lu>30000)items[i].remove();
-  }
-},10000);
-
-function toggleLog(){
-  logVisible=!logVisible;
-  var p=document.getElementById('logPanel');var ic=document.getElementById('logToggleIcon');
-  p.classList.toggle('hidden',!logVisible);
-  ic.innerHTML=logVisible?'&#9660;':'&#9654;';
-}
-function openLog(){
-  if(logVisible)return;
-  logVisible=true;
-  document.getElementById('logPanel').classList.remove('hidden');
-  document.getElementById('logToggleIcon').innerHTML='&#9660;';
-}
-function jumpToLog(){
-  openChat();
-  openLog();
-  setTimeout(function(){document.getElementById('logPanel').scrollIntoView({behavior:'smooth',block:'end'})},300);
-}
-
-// ===== REFRESH =====
-function showInitProgress(){
-  document.getElementById('progressPanel').innerHTML='';
-  var p=document.getElementById('progressPanel');
-  p.innerHTML='<div class="progress-item" id="prog-init" data-last-update="'+Date.now()+'"><button class="progress-close" onclick="this.parentNode.remove()" title="Dismiss">&times;</button><div class="progress-label">'+t('loading')+'</div><div class="progress-bar"><div class="progress-fill" style="width:30%;animation:prog-pulse 1.5s ease-in-out infinite"></div></div></div>';
-  if(window.innerWidth<=768){openChat();openLog();}
-}
-function startAutoRefresh(){if(autoRefreshTimer)return;autoRefreshTimer=setInterval(function(){if(selectedChannel>0)doRefresh(true)},600000)}
-function updateNextFetchDisplay(){
-  if(nextFetchInterval)clearInterval(nextFetchInterval);
-  var el=document.getElementById('nextFetchTimer');
-  var info=document.getElementById('nextFetchInfoBtn');
-  if(!serverNextFetch){el.textContent='';if(info)info.style.display='none';return}
-  if(info){info.style.display='';info.title=t('next_fetch_info')}
-  var autoRefreshed=false;
-  function tick(){var now=Math.floor(Date.now()/1000),d=serverNextFetch-now;
-    if(d<=0){el.textContent='';
-      if(!autoRefreshed){autoRefreshed=true;setTimeout(function(){doAutoRefreshAfterCountdown()},3000)}
-      return}
-    var m=Math.floor(d/60),s=d%60;el.textContent=m+':'+(s<10?'0':'')+s}
-  tick();nextFetchInterval=setInterval(tick,1000);
-}
-async function doRefreshUI(){
-  var btn=document.getElementById('refreshBtn');
-  btn.style.animation='spin .8s linear';
-  showToast(t('refreshing'));
-  await doRefresh(false);
-  setTimeout(function(){btn.style.animation=''},800);
-}
-async function doRefresh(quiet){
-  try{
-    var url='/api/refresh';
-    if(selectedChannel>0)url+='?channel='+selectedChannel;
-    if(quiet)url+=(url.includes('?')?'&':'?')+'quiet=1';
-    await fetch(url,{method:'POST'});
-    if(!quiet&&selectedChannel>0)setTimeout(function(){loadChannels();loadMessages(selectedChannel)},3000);
-  }catch(e){}
-}
-
-async function doAutoRefreshAfterCountdown(){
-  // Auto-triggered when server fetch countdown reaches 0
-  // Clear metadata cache so we get fresh data
-  try{localStorage.removeItem(cacheKey())}catch(e){}
-  try{
-    // Reload channels (this also fetches /api/status and updates the timer)
-    await loadChannels();
-    // If we have a selected channel, reload its messages too
-    if(selectedChannel>0)await loadMessages(selectedChannel);
-    // If the timer still didn't show (server may not have refreshed yet), retry after a delay
-    if(!serverNextFetch||serverNextFetch<=Math.floor(Date.now()/1000)){
-      setTimeout(async function(){
-        try{var sr=await fetch('/api/status');var st=await sr.json();
-          if(st.nextFetch&&st.nextFetch>Math.floor(Date.now()/1000)){serverNextFetch=st.nextFetch;updateNextFetchDisplay()}
-        }catch(e){}
-      },15000);
+    function updateResolverScanDisplay(line) {
+      var panel = document.getElementById('progressPanel');
+      var item = document.getElementById('prog-resolvers');
+      // RESOLVER_SCAN start N
+      var startMatch = line.match(/RESOLVER_SCAN start (\d+)/);
+      if (startMatch) {
+        var total = parseInt(startMatch[1]);
+        resolverScanDone = 0; resolverScanHealthy = 0; resolverScanTotal = total;
+        item = ensureResolverScanItem();
+        item.dataset.total = total;
+        item.querySelector('.progress-label').textContent = t('scanning_resolvers') + ' 0/' + total;
+        item.querySelector('.progress-fill').style.width = '0%';
+        item.dataset.lastUpdate = Date.now();
+        resolverScanHint = t('scanning_resolvers') + '... <button onclick="jumpToLog()" style="background:none;border:none;cursor:pointer;font-size:13px;vertical-align:middle;padding:0 2px">&#128220;</button>';
+        var hintEl = document.getElementById('no-ch-hint'); if (hintEl) hintEl.innerHTML = resolverScanHint;
+        return;
+      }
+      // If the item was removed (e.g. SSE reconnect cleared the panel) but scan
+      // is still in progress, re-create it so progress updates keep showing.
+      if (!item) item = ensureResolverScanItem();
+      // RESOLVER_SCAN progress D/T healthy=H
+      var progMatch = line.match(/RESOLVER_SCAN progress (\d+)\/(\d+)(?: healthy=(\d+))?/);
+      if (progMatch) {
+        var done = parseInt(progMatch[1]), tot = parseInt(progMatch[2]), hlthy = progMatch[3] !== undefined ? parseInt(progMatch[3]) : null;
+        // Use authoritative values from the structured message.
+        resolverScanDone = done; resolverScanTotal = tot;
+        if (hlthy !== null) resolverScanHealthy = hlthy;
+        var pct = Math.round((done / tot) * 100);
+        var label = t('scanning_resolvers') + ' ' + done + '/' + tot + ' \u2713' + resolverScanHealthy;
+        item.querySelector('.progress-label').textContent = label;
+        item.querySelector('.progress-fill').style.width = pct + '%';
+        item.dataset.lastUpdate = Date.now();
+        resolverScanHint = t('scanning_resolvers') + ' (' + done + '/' + tot + ', \u2713' + resolverScanHealthy + ')' + ' <button onclick="jumpToLog()" style="background:none;border:none;cursor:pointer;font-size:13px;vertical-align:middle;padding:0 2px">&#128220;</button>';
+        var hintEl = document.getElementById('no-ch-hint'); if (hintEl) hintEl.innerHTML = resolverScanHint;
+        return;
+      }
+      // RESOLVER_SCAN done K/T
+      var doneMatch = line.match(/RESOLVER_SCAN done (\d+)\/(\d+)/);
+      if (doneMatch) {
+        var healthy = parseInt(doneMatch[1]), total2 = parseInt(doneMatch[2]);
+        resolverScanDone = total2; resolverScanHealthy = healthy; resolverScanTotal = total2;
+        item.querySelector('.progress-label').textContent = t('scanning_resolvers') + ': ' + healthy + '/' + total2 + ' active';
+        item.querySelector('.progress-fill').style.width = '100%';
+        resolverScanHint = '';
+        // Remove init loading bar if it's still around
+        var initItem = document.getElementById('prog-init'); if (initItem) initItem.remove();
+        var hintEl = document.getElementById('no-ch-hint'); if (hintEl) hintEl.innerHTML = t('no_channels_hint') + ' <button onclick="jumpToLog()" style="background:none;border:none;cursor:pointer;font-size:13px;vertical-align:middle;padding:0 2px">&#128220;</button> ' + t('no_channels_hint2');
+        setTimeout(function () { if (item.parentNode) item.parentNode.removeChild(item) }, 2000);
+        // Scan is done — load channels in case the SSE 'update' event was dropped.
+        setTimeout(function () { loadChannels().then(function () { if (channels.length > 0 && selectedChannel === 0) selectChannel(1) }) }, 3000);
+      }
     }
-  }catch(e){}
-}
 
-// ===== SEND =====
-async function sendMessage(){
-  var input=document.getElementById('sendInput');var text=input.value.trim();
-  if(!text||!selectedChannel)return;
-  try{
-    var r=await fetch('/api/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({channel:selectedChannel,text:text})});
-    if(r.ok){input.value='';addLogLine('Message sent')}
-    else addLogLine('Error: '+(await r.text()));
-  }catch(e){addLogLine('Error: '+e.message)}
-}
+    function updateProgressDisplay(line) {
+      var match = line.match(/Channel\s+(\d+)/); if (!match) return;
+      var channelNum = parseInt(match[1]);
+      var fracMatch = line.match(/\((\d+)\/(\d+)\)/);
+      var completed = fracMatch ? parseInt(fracMatch[1]) : 0;
+      var total = fracMatch ? parseInt(fracMatch[2]) : 0;
+      var pct = line.match(/(\d+)%/); var percent = pct ? parseInt(pct[1]) : 0;
+      var ch = channels[channelNum - 1];
+      var chName = ch && (ch.Name || ch.name) || '';
+      var label = (fracMatch ? (completed + '/' + total) : ('Channel ' + channelNum)) + (chName ? ' (' + chName + ')' : '');
+      var panel = document.getElementById('progressPanel');
+      var item = document.getElementById('prog-ch-' + channelNum);
+      if (!item) {
+        item = document.createElement('div'); item.id = 'prog-ch-' + channelNum; item.className = 'progress-item';
+        item.innerHTML = '<button class="progress-close" onclick="this.parentNode.remove()" title="Dismiss">&times;</button><div class="progress-label"></div><div class="progress-bar"><div class="progress-fill" style="width:0%"></div></div>';
+        panel.appendChild(item);
+      }
+      item.querySelector('.progress-label').textContent = label;
+      item.querySelector('.progress-fill').style.width = percent + '%';
+      // Mark last-update time so stale items can be cleaned
+      item.dataset.lastUpdate = Date.now();
+      if (percent >= 100) setTimeout(function () { if (item.parentNode) item.parentNode.removeChild(item) }, 800);
+    }
 
-// ===== COPY MSG =====
-function copyMsg(idx){
-  var text=currentMsgTexts[idx];if(text===undefined)return;
-  navigator.clipboard.writeText(text).then(function(){showToast(t('msg_copied'))}).catch(function(){});
-}
+    // Periodically remove stale progress items that stopped updating (missed 'done' event)
+    setInterval(function () {
+      var now = Date.now();
+      var items = document.getElementById('progressPanel').querySelectorAll('.progress-item');
+      for (var i = 0; i < items.length; i++) {
+        var lu = parseInt(items[i].dataset.lastUpdate || '0');
+        if (lu > 0 && now - lu > 30000) items[i].remove();
+      }
+    }, 10000);
 
-// ===== SCROLL TO BOTTOM =====
-(function(){
-  var messagesEl=null;
-  function initScrollBtn(){
-    messagesEl=document.getElementById('messages');
-    if(!messagesEl)return;
-    messagesEl.addEventListener('scroll',function(){
-      var atBottom=messagesEl.scrollHeight-messagesEl.scrollTop-messagesEl.clientHeight<150;
-      document.getElementById('scrollDownBtn').classList.toggle('visible',!atBottom);
+    function toggleLog() {
+      logVisible = !logVisible;
+      var p = document.getElementById('logPanel'); var ic = document.getElementById('logToggleIcon');
+      p.classList.toggle('hidden', !logVisible);
+      ic.innerHTML = logVisible ? '&#9660;' : '&#9654;';
+    }
+    function openLog() {
+      if (logVisible) return;
+      logVisible = true;
+      document.getElementById('logPanel').classList.remove('hidden');
+      document.getElementById('logToggleIcon').innerHTML = '&#9660;';
+    }
+    function jumpToLog() {
+      openChat();
+      openLog();
+      setTimeout(function () { document.getElementById('logPanel').scrollIntoView({ behavior: 'smooth', block: 'end' }) }, 300);
+    }
+
+    // ===== REFRESH =====
+    function showInitProgress() {
+      document.getElementById('progressPanel').innerHTML = '';
+      var p = document.getElementById('progressPanel');
+      p.innerHTML = '<div class="progress-item" id="prog-init" data-last-update="' + Date.now() + '"><button class="progress-close" onclick="this.parentNode.remove()" title="Dismiss">&times;</button><div class="progress-label">' + t('loading') + '</div><div class="progress-bar"><div class="progress-fill" style="width:30%;animation:prog-pulse 1.5s ease-in-out infinite"></div></div></div>';
+      if (window.innerWidth <= 768) { openChat(); openLog(); }
+    }
+    function startAutoRefresh() { if (autoRefreshTimer) return; autoRefreshTimer = setInterval(function () { if (selectedChannel > 0) doRefresh(true) }, 600000) }
+    function updateNextFetchDisplay() {
+      if (nextFetchInterval) clearInterval(nextFetchInterval);
+      var el = document.getElementById('nextFetchTimer');
+      var info = document.getElementById('nextFetchInfoBtn');
+      if (!serverNextFetch) { el.textContent = ''; if (info) info.style.display = 'none'; return }
+      if (info) { info.style.display = ''; info.title = t('next_fetch_info') }
+      var autoRefreshed = false;
+      function tick() {
+        var now = Math.floor(Date.now() / 1000), d = serverNextFetch - now;
+        if (d <= 0) {
+          el.textContent = '';
+          if (!autoRefreshed) { autoRefreshed = true; setTimeout(function () { doAutoRefreshAfterCountdown() }, 3000) }
+          return
+        }
+        var m = Math.floor(d / 60), s = d % 60; el.textContent = m + ':' + (s < 10 ? '0' : '') + s
+      }
+      tick(); nextFetchInterval = setInterval(tick, 1000);
+    }
+    async function doRefreshUI() {
+      var btn = document.getElementById('refreshBtn');
+      btn.style.animation = 'spin .8s linear';
+      showToast(t('refreshing'));
+      await doRefresh(false);
+      setTimeout(function () { btn.style.animation = '' }, 800);
+    }
+    async function doRefresh(quiet) {
+      try {
+        var url = '/api/refresh';
+        if (selectedChannel > 0) url += '?channel=' + selectedChannel;
+        if (quiet) url += (url.includes('?') ? '&' : '?') + 'quiet=1';
+        await fetch(url, { method: 'POST' });
+        if (!quiet && selectedChannel > 0) setTimeout(function () { loadChannels(); loadMessages(selectedChannel) }, 3000);
+      } catch (e) { }
+    }
+
+    async function doAutoRefreshAfterCountdown() {
+      // Auto-triggered when server fetch countdown reaches 0
+      // Clear metadata cache so we get fresh data
+      try { localStorage.removeItem(cacheKey()) } catch (e) { }
+      try {
+        // Reload channels (this also fetches /api/status and updates the timer)
+        await loadChannels();
+        // If we have a selected channel, reload its messages too
+        if (selectedChannel > 0) await loadMessages(selectedChannel);
+        // If the timer still didn't show (server may not have refreshed yet), retry after a delay
+        if (!serverNextFetch || serverNextFetch <= Math.floor(Date.now() / 1000)) {
+          setTimeout(async function () {
+            try {
+              var sr = await fetch('/api/status'); var st = await sr.json();
+              if (st.nextFetch && st.nextFetch > Math.floor(Date.now() / 1000)) { serverNextFetch = st.nextFetch; updateNextFetchDisplay() }
+            } catch (e) { }
+          }, 15000);
+        }
+      } catch (e) { }
+    }
+
+    // ===== SEND =====
+    async function sendMessage() {
+      var input = document.getElementById('sendInput'); var text = input.value.trim();
+      if (!text || !selectedChannel) return;
+      try {
+        var r = await fetch('/api/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channel: selectedChannel, text: text }) });
+        if (r.ok) { input.value = ''; addLogLine('Message sent') }
+        else addLogLine('Error: ' + (await r.text()));
+      } catch (e) { addLogLine('Error: ' + e.message) }
+    }
+
+    // ===== COPY MSG =====
+    function copyMsg(idx) {
+      var text = currentMsgTexts[idx]; if (text === undefined) return;
+      navigator.clipboard.writeText(text).then(function () { showToast(t('msg_copied')) }).catch(function () { });
+    }
+
+    // ===== SCROLL TO BOTTOM =====
+    (function () {
+      var messagesEl = null;
+      function initScrollBtn() {
+        messagesEl = document.getElementById('messages');
+        if (!messagesEl) return;
+        messagesEl.addEventListener('scroll', function () {
+          var atBottom = messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight < 150;
+          document.getElementById('scrollDownBtn').classList.toggle('visible', !atBottom);
+        });
+      }
+      // Init after DOM is ready
+      document.addEventListener('DOMContentLoaded', initScrollBtn, { once: true });
+    })();
+    function scrollToBottom() {
+      var el = document.getElementById('messages');
+      if (el) el.scrollTop = el.scrollHeight;
+    }
+
+    // ===== TOAST =====
+    function showToast(msg) {
+      var el = document.getElementById('toast'); el.textContent = msg; el.classList.add('show');
+      setTimeout(function () { el.classList.remove('show') }, 2200);
+    }
+
+    // ===== UTILITIES =====
+    function esc(s) { var d = document.createElement('div'); d.appendChild(document.createTextNode(s)); return d.innerHTML }
+    function isPersian(text) { return text && (text.match(/[\u0600-\u06FF]/g) || []).length > text.length * 0.25 }
+
+    // ===== EVENTS =====
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && document.activeElement === document.getElementById('sendInput')) { e.preventDefault(); sendMessage() }
+      if (e.key === 'Enter' && document.activeElement === document.getElementById('peAddChannelInput')) { e.preventDefault(); addChannelEditor() }
+      if (e.key === 'Escape') { closeSettings(); closeProfiles(); closeProfileEditor() }
     });
-  }
-  // Init after DOM is ready
-  document.addEventListener('DOMContentLoaded',initScrollBtn,{once:true});
-})();
-function scrollToBottom(){
-  var el=document.getElementById('messages');
-  if(el)el.scrollTop=el.scrollHeight;
-}
+    window.addEventListener('resize', function () { if (window.innerWidth > 768) document.getElementById('app').classList.remove('chat-open') });
 
-// ===== TOAST =====
-function showToast(msg){
-  var el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');
-  setTimeout(function(){el.classList.remove('show')},2200);
-}
+    // Handle thefeed:// URI hash import
+    (function () { var h = location.hash; if (h && h.startsWith('#thefeed://')) { document.getElementById('importUriInput').value = decodeURIComponent(h.substring(1)); openProfiles(); doImportUri() } })();
 
-// ===== UTILITIES =====
-function esc(s){var d=document.createElement('div');d.appendChild(document.createTextNode(s));return d.innerHTML}
-function isPersian(text){return text&&(text.match(/[\u0600-\u06FF]/g)||[]).length>text.length*0.25}
-
-// ===== EVENTS =====
-document.addEventListener('keydown',function(e){
-  if(e.key==='Enter'&&document.activeElement===document.getElementById('sendInput')){e.preventDefault();sendMessage()}
-  if(e.key==='Enter'&&document.activeElement===document.getElementById('peAddChannelInput')){e.preventDefault();addChannelEditor()}
-  if(e.key==='Escape'){closeSettings();closeProfiles();closeProfileEditor()}
-});
-window.addEventListener('resize',function(){if(window.innerWidth>768)document.getElementById('app').classList.remove('chat-open')});
-
-// Handle thefeed:// URI hash import
-(function(){var h=location.hash;if(h&&h.startsWith('#thefeed://')){document.getElementById('importUriInput').value=decodeURIComponent(h.substring(1));openProfiles();doImportUri()}})();
-
-init();
-</script>
+    init();
+  </script>
 </body>
+
 </html>
