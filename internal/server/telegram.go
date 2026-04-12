@@ -60,6 +60,7 @@ type TelegramReader struct {
 	channels []string // channel usernames without @
 	feed     *Feed
 	msgLimit int // max messages to fetch per channel
+	baseCh   int
 
 	mu       sync.RWMutex
 	cache    map[string]cachedMessages
@@ -85,7 +86,7 @@ type cachedMessages struct {
 }
 
 // NewTelegramReader creates a reader for the given channel usernames.
-func NewTelegramReader(cfg TelegramConfig, channelUsernames []string, feed *Feed, msgLimit int) *TelegramReader {
+func NewTelegramReader(cfg TelegramConfig, channelUsernames []string, feed *Feed, msgLimit int, baseCh int) *TelegramReader {
 	cleaned := make([]string, len(channelUsernames))
 	for i, u := range channelUsernames {
 		cleaned[i] = strings.TrimPrefix(strings.TrimSpace(u), "@")
@@ -93,11 +94,15 @@ func NewTelegramReader(cfg TelegramConfig, channelUsernames []string, feed *Feed
 	if msgLimit <= 0 {
 		msgLimit = 15
 	}
+	if baseCh <= 0 {
+		baseCh = 1
+	}
 	return &TelegramReader{
 		cfg:       cfg,
 		channels:  cleaned,
 		feed:      feed,
 		msgLimit:  msgLimit,
+		baseCh:    baseCh,
 		cache:     make(map[string]cachedMessages),
 		cacheTTL:  10 * time.Minute,
 		refreshCh: make(chan struct{}, 1),
@@ -181,8 +186,8 @@ func (tr *TelegramReader) UpdateChannels(channels []string) {
 	}
 	tr.mu.Lock()
 	tr.channels = cleaned
+	tr.cache = make(map[string]cachedMessages)
 	tr.mu.Unlock()
-	tr.feed.SetChannels(cleaned)
 }
 
 func (tr *TelegramReader) authenticate(ctx context.Context, client *telegram.Client) error {
@@ -214,7 +219,7 @@ func (tr *TelegramReader) authenticate(ctx context.Context, client *telegram.Cli
 
 func (tr *TelegramReader) fetchAll(ctx context.Context, api *tg.Client) {
 	for i, username := range tr.channels {
-		chNum := i + 1
+		chNum := tr.baseCh + i
 
 		// Check cache
 		tr.mu.RLock()

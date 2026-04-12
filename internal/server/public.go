@@ -23,6 +23,7 @@ type PublicReader struct {
 	channels []string
 	feed     *Feed
 	msgLimit int
+	baseCh   int
 
 	client  *http.Client
 	baseURL string
@@ -35,7 +36,7 @@ type PublicReader struct {
 }
 
 // NewPublicReader creates a reader for public channels without Telegram login.
-func NewPublicReader(channelUsernames []string, feed *Feed, msgLimit int) *PublicReader {
+func NewPublicReader(channelUsernames []string, feed *Feed, msgLimit int, baseCh int) *PublicReader {
 	cleaned := make([]string, len(channelUsernames))
 	for i, u := range channelUsernames {
 		cleaned[i] = strings.TrimPrefix(strings.TrimSpace(u), "@")
@@ -43,10 +44,14 @@ func NewPublicReader(channelUsernames []string, feed *Feed, msgLimit int) *Publi
 	if msgLimit <= 0 {
 		msgLimit = 15
 	}
+	if baseCh <= 0 {
+		baseCh = 1
+	}
 	return &PublicReader{
 		channels: cleaned,
 		feed:     feed,
 		msgLimit: msgLimit,
+		baseCh:   baseCh,
 		client: &http.Client{
 			Timeout: 30 * time.Second,
 		},
@@ -102,12 +107,11 @@ func (pr *PublicReader) UpdateChannels(channels []string) {
 	pr.channels = cleaned
 	pr.cache = make(map[string]cachedMessages)
 	pr.mu.Unlock()
-	pr.feed.SetChannels(cleaned)
 }
 
 func (pr *PublicReader) fetchAll(ctx context.Context) {
 	for i, username := range pr.channels {
-		chNum := i + 1
+		chNum := pr.baseCh + i
 
 		pr.mu.RLock()
 		cached, ok := pr.cache[username]

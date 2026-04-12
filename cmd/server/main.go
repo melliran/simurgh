@@ -25,6 +25,8 @@ func main() {
 	domain := flag.String("domain", "", "DNS domain (e.g., t.example.com)")
 	key := flag.String("key", "", "Encryption passphrase")
 	channelsFile := flag.String("channels", "", "Path to channels file (default: {data-dir}/channels.txt)")
+	xAccountsFile := flag.String("x-accounts", "", "Path to X accounts file (default: {data-dir}/x_accounts.txt)")
+	xRSSInstances := flag.String("x-rss-instances", "", "Comma-separated X RSS base URLs (e.g., http://nitter.net,https://nitter.net)")
 	apiID := flag.String("api-id", "", "Telegram API ID (optional if --no-telegram)")
 	apiHash := flag.String("api-hash", "", "Telegram API Hash (optional if --no-telegram)")
 	phone := flag.String("phone", "", "Telegram phone number (optional if --no-telegram)")
@@ -37,7 +39,7 @@ func main() {
 	debug := flag.Bool("debug", false, "Log every decoded DNS query")
 	showVersion := flag.Bool("version", false, "Show version and exit")
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "thefeed-server %s\n\nServes Telegram channel content over encrypted DNS for censorship-resistant access.\n\nUsage:\n  thefeed-server [flags]\n\nFlags:\n", version.Version)
+		fmt.Fprintf(os.Stderr, "thefeed-server %s\n\nServes Telegram/X feed content over encrypted DNS for censorship-resistant access.\n\nUsage:\n  thefeed-server [flags]\n\nFlags:\n", version.Version)
 		flag.PrintDefaults()
 	}
 	flag.Parse()
@@ -55,6 +57,9 @@ func main() {
 	// Default paths relative to data directory
 	if *channelsFile == "" {
 		*channelsFile = filepath.Join(*dataDir, "channels.txt")
+	}
+	if *xAccountsFile == "" {
+		*xAccountsFile = filepath.Join(*dataDir, "x_accounts.txt")
 	}
 	if *sessionPath == "" {
 		*sessionPath = filepath.Join(*dataDir, "session.json")
@@ -88,6 +93,9 @@ func main() {
 	}
 	if *phone == "" {
 		*phone = os.Getenv("TELEGRAM_PHONE")
+	}
+	if *xRSSInstances == "" {
+		*xRSSInstances = os.Getenv("THEFEED_X_RSS_INSTANCES")
 	}
 
 	if *domain == "" || *key == "" {
@@ -133,15 +141,17 @@ func main() {
 	}
 
 	cfg := server.Config{
-		ListenAddr:   *listen,
-		Domain:       *domain,
-		Passphrase:   *key,
-		ChannelsFile: *channelsFile,
-		MaxPadding:   *maxPadding,
-		MsgLimit:     *msgLimit,
-		NoTelegram:   *noTelegram,
-		AllowManage:  *allowManage,
-		Debug:        *debug,
+		ListenAddr:    *listen,
+		Domain:        *domain,
+		Passphrase:    *key,
+		ChannelsFile:  *channelsFile,
+		XAccountsFile: *xAccountsFile,
+		XRSSInstances: *xRSSInstances,
+		MaxPadding:    *maxPadding,
+		MsgLimit:      *msgLimit,
+		NoTelegram:    *noTelegram,
+		AllowManage:   *allowManage,
+		Debug:         *debug,
 		Telegram: server.TelegramConfig{
 			APIID:       id,
 			APIHash:     *apiHash,

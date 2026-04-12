@@ -97,141 +97,260 @@ download_binary() {
     echo -e "${green}Binary installed to ${INSTALL_DIR}/thefeed-server${plain}"
 }
 
+setup_channels() {
+    echo -e "\n${green}Setting up Telegram channels...${plain}"
+    echo "# Telegram channel usernames (one per line)" > "$DATA_DIR/channels.txt.tmp"
+    echo "# Lines starting with # are comments" >> "$DATA_DIR/channels.txt.tmp"
+
+    echo ""
+    echo -e "${yellow}Enter Telegram channel usernames (one per line, empty line to finish):${plain}"
+    while true; do
+        read -rp "  Channel: " channel
+        if [[ -z "$channel" ]]; then
+            break
+        fi
+        channel="${channel#@}"
+        echo "@$channel" >> "$DATA_DIR/channels.txt.tmp"
+        echo -e "  ${green}Added @${channel}${plain}"
+    done
+    mv "$DATA_DIR/channels.txt.tmp" "$DATA_DIR/channels.txt"
+}
+
+setup_x_accounts() {
+    echo -e "\n${green}Setting up X accounts...${plain}"
+    echo "# X usernames (one per line, without @)" > "$DATA_DIR/x_accounts.txt.tmp"
+    echo "# Lines starting with # are comments" >> "$DATA_DIR/x_accounts.txt.tmp"
+
+    echo ""
+    echo -e "${yellow}Enter X usernames (one per line, empty line to finish):${plain}"
+    while true; do
+        read -rp "  X: " account
+        if [[ -z "$account" ]]; then
+            break
+        fi
+        account="${account#@}"
+        account="${account#x/}"
+        echo "$account" >> "$DATA_DIR/x_accounts.txt.tmp"
+        echo -e "  ${green}Added ${account}${plain}"
+    done
+    mv "$DATA_DIR/x_accounts.txt.tmp" "$DATA_DIR/x_accounts.txt"
+}
+
+# Helper: update or add a key=value in the env file
+env_set() {
+    local key="$1" val="$2"
+    if grep -q "^${key}=" "$DATA_DIR/thefeed.env" 2>/dev/null; then
+        sed -i "s|^${key}=.*|${key}=${val}|" "$DATA_DIR/thefeed.env"
+    else
+        echo "${key}=${val}" >> "$DATA_DIR/thefeed.env"
+    fi
+}
+
+# Helper: read a key from the env file (empty string if missing)
+env_get() {
+    local key="$1"
+    grep "^${key}=" "$DATA_DIR/thefeed.env" 2>/dev/null | head -1 | cut -d= -f2-
+}
+
 setup_config() {
     mkdir -p "$DATA_DIR"
 
-    # Channels file
-    if [[ ! -f "$DATA_DIR/channels.txt" ]]; then
-        echo -e "\n${green}Setting up channels...${plain}"
-        echo "# Telegram channel usernames (one per line)" > "$DATA_DIR/channels.txt"
-        echo "# Lines starting with # are comments" >> "$DATA_DIR/channels.txt"
-
-        echo ""
-        echo -e "${yellow}Enter Telegram channel usernames (one per line, empty line to finish):${plain}"
-        while true; do
-            read -rp "  Channel: " channel
-            if [[ -z "$channel" ]]; then
-                break
-            fi
-            channel="${channel#@}"
-            echo "@$channel" >> "$DATA_DIR/channels.txt"
-            echo -e "  ${green}Added @${channel}${plain}"
-        done
-    else
-        echo -e "${yellow}Channels file already exists: ${DATA_DIR}/channels.txt${plain}"
+    local is_update=false
+    if [[ -f "$DATA_DIR/thefeed.env" ]]; then
+        is_update=true
+        set -a
+        source "$DATA_DIR/thefeed.env"
+        set +a
     fi
 
-    # Environment file
-    if [[ ! -f "$DATA_DIR/thefeed.env" ]]; then
-        echo -e "\n${green}═══════════════════════════════════════${plain}"
-        echo -e "${green}  Server Configuration${plain}"
-        echo -e "${green}═══════════════════════════════════════${plain}"
-        echo ""
+    # --- Channels ---
+    if [[ -f "$DATA_DIR/channels.txt" ]]; then
+        local ch_count
+        ch_count=$(grep -c '^@' "$DATA_DIR/channels.txt" 2>/dev/null || echo 0)
+        echo -e "${yellow}Telegram channels configured: ${ch_count}${plain}"
+        read -rp "Change Telegram channels? [y/N]: " change_ch
+        if [[ "$change_ch" == "y" || "$change_ch" == "Y" ]]; then
+            setup_channels
+        fi
+    else
+        setup_channels
+    fi
 
-        local domain=""
-        while true; do
+    # --- X accounts ---
+    if [[ -f "$DATA_DIR/x_accounts.txt" ]]; then
+        local x_count
+        x_count=$(grep -cv '^#\|^$' "$DATA_DIR/x_accounts.txt" 2>/dev/null || echo 0)
+        echo -e "${yellow}X accounts configured: ${x_count}${plain}"
+        read -rp "Change X accounts? [y/N]: " change_x
+        if [[ "$change_x" == "y" || "$change_x" == "Y" ]]; then
+            setup_x_accounts
+        fi
+    else
+        setup_x_accounts
+    fi
+
+    # --- Server settings ---
+    echo -e "\n${green}═══════════════════════════════════════${plain}"
+    echo -e "${green}  Server Configuration${plain}"
+    echo -e "${green}═══════════════════════════════════════${plain}"
+    echo ""
+
+    local cur_domain cur_key cur_limit cur_listen
+    if $is_update; then
+        cur_domain=$(env_get THEFEED_DOMAIN)
+        cur_key=$(env_get THEFEED_KEY)
+        cur_limit=$(env_get THEFEED_MSG_LIMIT)
+        cur_listen=$(env_get THEFEED_LISTEN)
+    fi
+
+    local domain=""
+    while true; do
+        if [[ -n "$cur_domain" ]]; then
+            read -rp "DNS domain [${cur_domain}]: " domain
+            domain="${domain:-$cur_domain}"
+        else
             read -rp "DNS domain (e.g., t.example.com): " domain
-            if [[ -n "$domain" ]]; then break; fi
-            echo -e "${red}Domain cannot be empty${plain}"
-        done
+        fi
+        if [[ -n "$domain" ]]; then break; fi
+        echo -e "${red}Domain cannot be empty${plain}"
+    done
 
-        local passkey=""
-        while true; do
+    local passkey=""
+    while true; do
+        if [[ -n "$cur_key" ]]; then
+            read -rp "Encryption passphrase [keep current]: " passkey
+            passkey="${passkey:-$cur_key}"
+        else
             read -rp "Encryption passphrase: " passkey
-            if [[ -n "$passkey" ]]; then break; fi
-            echo -e "${red}Passphrase cannot be empty${plain}"
-        done
+        fi
+        if [[ -n "$passkey" ]]; then break; fi
+        echo -e "${red}Passphrase cannot be empty${plain}"
+    done
 
-        local msg_limit=""
-        read -rp "Max messages per channel [15]: " msg_limit
-        msg_limit="${msg_limit:-15}"
+    local msg_limit=""
+    read -rp "Max messages per channel [${cur_limit:-15}]: " msg_limit
+    msg_limit="${msg_limit:-${cur_limit:-15}}"
 
-        echo ""
-        echo -e "${yellow}Allow remote management (send messages, add/remove channels)?${plain}"
-        echo -e "  If enabled, anyone with the passphrase can manage channels."
-        local allow_manage=""
+    echo ""
+    echo -e "${yellow}Allow remote management (send messages, add/remove channels)?${plain}"
+    echo -e "  If enabled, anyone with the passphrase can manage channels."
+    local allow_manage=""
+    if [[ "${THEFEED_ALLOW_MANAGE:-}" == "1" ]]; then
+        read -rp "Enable remote management? [Y/n]: " allow_manage
+        if [[ "$allow_manage" == "n" || "$allow_manage" == "N" ]]; then
+            allow_manage="0"
+        else
+            allow_manage="1"
+        fi
+    else
         read -rp "Enable remote management? [y/N]: " allow_manage
+        if [[ "$allow_manage" == "y" || "$allow_manage" == "Y" ]]; then
+            allow_manage="1"
+        else
+            allow_manage="0"
+        fi
+    fi
 
-        local no_telegram=""
-        echo ""
-        echo -e "${green}═══════════════════════════════════════${plain}"
-        echo -e "${green}  Telegram Mode Selection${plain}"
-        echo -e "${green}═══════════════════════════════════════${plain}"
-        echo ""
-        echo -e "${yellow}Option 1: Without Telegram (Recommended)${plain}"
-        echo -e "  - Safer: no Telegram credentials stored on server"
-        echo -e "  - Reads public channels without login"
-        echo -e "  - Cannot read private channels or send messages"
-        echo ""
-        echo -e "${yellow}Option 2: With Telegram${plain}"
-        echo -e "  - Required for private channels, groups, and sending messages"
-        echo -e "  - Needs Telegram API credentials and phone number"
-        echo ""
-        read -rp "Run without Telegram login? (recommended) [Y/n]: " no_telegram
-        if [[ "$no_telegram" != "n" && "$no_telegram" != "N" ]]; then
-            local api_id="0"
-            local api_hash="none"
-            local phone="none"
-            local listen_addr=""
-            read -rp "DNS listen address [0.0.0.0:53]: " listen_addr
-            listen_addr="${listen_addr:-0.0.0.0:53}"
+    # --- Telegram mode ---
+    local no_telegram=""
+    echo ""
+    echo -e "${green}═══════════════════════════════════════${plain}"
+    echo -e "${green}  Telegram Mode Selection${plain}"
+    echo -e "${green}═══════════════════════════════════════${plain}"
+    echo ""
+    echo -e "${yellow}Option 1: Without Telegram (Recommended)${plain}"
+    echo -e "  - Safer: no Telegram credentials stored on server"
+    echo -e "  - Reads public channels without login"
+    echo -e "  - Cannot read private channels or send messages"
+    echo ""
+    echo -e "${yellow}Option 2: With Telegram${plain}"
+    echo -e "  - Required for private channels, groups, and sending messages"
+    echo -e "  - Needs Telegram API credentials and phone number"
+    echo ""
+    read -rp "Run without Telegram login? (recommended) [Y/n]: " no_telegram
 
-            cat > "$DATA_DIR/thefeed.env" <<ENVEOF
+    local api_id="" api_hash="" phone="" listen_addr=""
+    if [[ "$no_telegram" != "n" && "$no_telegram" != "N" ]]; then
+        api_id="0"
+        api_hash="none"
+        phone="none"
+        read -rp "DNS listen address [${cur_listen:-0.0.0.0:53}]: " listen_addr
+        listen_addr="${listen_addr:-${cur_listen:-0.0.0.0:53}}"
+
+        cat > "$DATA_DIR/thefeed.env" <<ENVEOF
 THEFEED_DOMAIN=${domain}
 THEFEED_KEY=${passkey}
-THEFEED_ALLOW_MANAGE=$([ "$allow_manage" = "y" ] || [ "$allow_manage" = "Y" ] && echo "1" || echo "0")
+THEFEED_ALLOW_MANAGE=${allow_manage}
 THEFEED_MSG_LIMIT=${msg_limit}
+THEFEED_X_RSS_INSTANCES=http://nitter.net,https://nitter.net
 TELEGRAM_API_ID=${api_id}
 TELEGRAM_API_HASH=${api_hash}
 TELEGRAM_PHONE=${phone}
 THEFEED_LISTEN=${listen_addr}
 THEFEED_NO_TELEGRAM=1
 ENVEOF
-            chmod 600 "$DATA_DIR/thefeed.env"
-            echo -e "${green}Config saved to ${DATA_DIR}/thefeed.env${plain}"
-            return 0
-        fi
+        chmod 600 "$DATA_DIR/thefeed.env"
+        echo -e "${green}Config saved to ${DATA_DIR}/thefeed.env${plain}"
+        return 0
+    fi
 
-        local api_id=""
-        while true; do
+    # With Telegram
+    local cur_api_id cur_api_hash cur_phone
+    if $is_update; then
+        cur_api_id=$(env_get TELEGRAM_API_ID)
+        cur_api_hash=$(env_get TELEGRAM_API_HASH)
+        cur_phone=$(env_get TELEGRAM_PHONE)
+    fi
+
+    while true; do
+        if [[ -n "$cur_api_id" && "$cur_api_id" != "0" ]]; then
+            read -rp "Telegram API ID [${cur_api_id}]: " api_id
+            api_id="${api_id:-$cur_api_id}"
+        else
             read -rp "Telegram API ID: " api_id
-            if [[ "$api_id" =~ ^[0-9]+$ ]]; then break; fi
-            echo -e "${red}API ID must be a number${plain}"
-        done
+        fi
+        if [[ "$api_id" =~ ^[0-9]+$ ]]; then break; fi
+        echo -e "${red}API ID must be a number${plain}"
+    done
 
-        local api_hash=""
-        while true; do
+    while true; do
+        if [[ -n "$cur_api_hash" && "$cur_api_hash" != "none" ]]; then
+            read -rp "Telegram API Hash [keep current]: " api_hash
+            api_hash="${api_hash:-$cur_api_hash}"
+        else
             read -rp "Telegram API Hash: " api_hash
-            if [[ -n "$api_hash" ]]; then break; fi
-            echo -e "${red}API Hash cannot be empty${plain}"
-        done
+        fi
+        if [[ -n "$api_hash" ]]; then break; fi
+        echo -e "${red}API Hash cannot be empty${plain}"
+    done
 
-        local phone=""
-        while true; do
+    while true; do
+        if [[ -n "$cur_phone" && "$cur_phone" != "none" ]]; then
+            read -rp "Telegram phone number [${cur_phone}]: " phone
+            phone="${phone:-$cur_phone}"
+        else
             read -rp "Telegram phone number (e.g., +1234567890): " phone
-            if [[ -n "$phone" ]]; then break; fi
-            echo -e "${red}Phone number cannot be empty${plain}"
-        done
+        fi
+        if [[ -n "$phone" ]]; then break; fi
+        echo -e "${red}Phone number cannot be empty${plain}"
+    done
 
-        read -rp "DNS listen address [0.0.0.0:53]: " listen_addr
-        listen_addr="${listen_addr:-0.0.0.0:53}"
+    read -rp "DNS listen address [${cur_listen:-0.0.0.0:53}]: " listen_addr
+    listen_addr="${listen_addr:-${cur_listen:-0.0.0.0:53}}"
 
-        cat > "$DATA_DIR/thefeed.env" <<ENVEOF
+    cat > "$DATA_DIR/thefeed.env" <<ENVEOF
 THEFEED_DOMAIN=${domain}
 THEFEED_KEY=${passkey}
-THEFEED_ALLOW_MANAGE=$([ "$allow_manage" = "y" ] || [ "$allow_manage" = "Y" ] && echo "1" || echo "0")
+THEFEED_ALLOW_MANAGE=${allow_manage}
 THEFEED_MSG_LIMIT=${msg_limit}
+THEFEED_X_RSS_INSTANCES=http://nitter.net,https://nitter.net
 TELEGRAM_API_ID=${api_id}
 TELEGRAM_API_HASH=${api_hash}
 TELEGRAM_PHONE=${phone}
 THEFEED_LISTEN=${listen_addr}
 ENVEOF
-        chmod 600 "$DATA_DIR/thefeed.env"
-        echo -e "${green}Config saved to ${DATA_DIR}/thefeed.env${plain}"
-    else
-        echo -e "${yellow}Config already exists: ${DATA_DIR}/thefeed.env${plain}"
-    fi
-
+    chmod 600 "$DATA_DIR/thefeed.env"
+    echo -e "${green}Config saved to ${DATA_DIR}/thefeed.env${plain}"
     chmod 700 "$DATA_DIR"
 }
 
@@ -295,6 +414,8 @@ ExecStart=${INSTALL_DIR}/thefeed-server \\
     --data-dir ${DATA_DIR} \\
     --domain \${THEFEED_DOMAIN} \\
     --key \${THEFEED_KEY} \\
+    --x-accounts ${DATA_DIR}/x_accounts.txt \\
+    --x-rss-instances \${THEFEED_X_RSS_INSTANCES} \\
     --api-id \${TELEGRAM_API_ID} \\
     --api-hash \${TELEGRAM_API_HASH} \\
     --phone \${TELEGRAM_PHONE} \\
@@ -339,6 +460,7 @@ show_usage() {
     echo -e "│  All data in: ${blue}${INSTALL_DIR}/${plain}                             │"
     echo -e "│  ${blue}Config:${plain}   ${DATA_DIR}/thefeed.env                │"
     echo -e "│  ${blue}Channels:${plain} ${DATA_DIR}/channels.txt               │"
+    echo -e "│  ${blue}X acct:${plain}  ${DATA_DIR}/x_accounts.txt             │"
     echo -e "│  ${blue}Session:${plain}  ${DATA_DIR}/session.json               │"
     echo -e "│  ${blue}Binary:${plain}   ${INSTALL_DIR}/thefeed-server                  │"
     echo -e "│                                                         │"
@@ -393,90 +515,24 @@ install_thefeed() {
     # Download
     download_binary "$version"
 
-    # First install: full setup
-    if [[ ! -f "$DATA_DIR/thefeed.env" ]]; then
-        setup_config
-        set -a
-        source "$DATA_DIR/thefeed.env"
-        set +a
-        if [[ "${THEFEED_NO_TELEGRAM:-}" != "1" ]]; then
+    # setup_config handles both first install and re-configuration
+    setup_config
+    set -a
+    source "$DATA_DIR/thefeed.env"
+    set +a
+    if [[ "${THEFEED_NO_TELEGRAM:-}" != "1" ]]; then
+        # Only prompt for Telegram login if credentials changed or no session exists
+        if [[ ! -f "$DATA_DIR/session.json" ]]; then
             telegram_login
-        fi
-        install_service
-        start_service
-    else
-        # Update: ask if user wants to change telegram mode, then regenerate service and restart
-        echo ""
-        set -a
-        source "$DATA_DIR/thefeed.env"
-        set +a
-        local current_mode="with Telegram"
-        if [[ "${THEFEED_NO_TELEGRAM:-}" == "1" ]]; then
-            current_mode="without Telegram"
-        fi
-        echo -e "Current mode: ${yellow}${current_mode}${plain}"
-        read -rp "Change Telegram mode? [y/N]: " change_mode
-        if [[ "$change_mode" == "y" || "$change_mode" == "Y" ]]; then
-            if [[ "${THEFEED_NO_TELEGRAM:-}" == "1" ]]; then
-                echo -e "${yellow}Switching to Telegram mode...${plain}"
-                # Remove no-telegram flag
-                sed -i '/THEFEED_NO_TELEGRAM/d' "$DATA_DIR/thefeed.env"
-                # Need telegram credentials
-                local api_id=""
-                while true; do
-                    read -rp "Telegram API ID: " api_id
-                    if [[ "$api_id" =~ ^[0-9]+$ ]]; then break; fi
-                    echo -e "${red}API ID must be a number${plain}"
-                done
-                local api_hash=""
-                while true; do
-                    read -rp "Telegram API Hash: " api_hash
-                    if [[ -n "$api_hash" ]]; then break; fi
-                    echo -e "${red}API Hash cannot be empty${plain}"
-                done
-                local phone=""
-                while true; do
-                    read -rp "Telegram phone number (e.g., +1234567890): " phone
-                    if [[ -n "$phone" ]]; then break; fi
-                    echo -e "${red}Phone number cannot be empty${plain}"
-                done
-                sed -i "s/^TELEGRAM_API_ID=.*/TELEGRAM_API_ID=${api_id}/" "$DATA_DIR/thefeed.env"
-                sed -i "s/^TELEGRAM_API_HASH=.*/TELEGRAM_API_HASH=${api_hash}/" "$DATA_DIR/thefeed.env"
-                sed -i "s/^TELEGRAM_PHONE=.*/TELEGRAM_PHONE=${phone}/" "$DATA_DIR/thefeed.env"
+        else
+            read -rp "Re-authenticate with Telegram? [y/N]: " relogin
+            if [[ "$relogin" == "y" || "$relogin" == "Y" ]]; then
                 telegram_login
-            else
-                echo -e "${yellow}Switching to no-Telegram mode (safer)...${plain}"
-                echo "THEFEED_NO_TELEGRAM=1" >> "$DATA_DIR/thefeed.env"
             fi
         fi
-
-        # Ask about remote management
-        local current_manage="disabled"
-        if [[ "${THEFEED_ALLOW_MANAGE:-}" == "1" ]]; then
-            current_manage="enabled"
-        fi
-        echo -e "Remote management: ${yellow}${current_manage}${plain}"
-        read -rp "Change remote management? [y/N]: " change_manage
-        if [[ "$change_manage" == "y" || "$change_manage" == "Y" ]]; then
-            if [[ "${THEFEED_ALLOW_MANAGE:-}" == "1" ]]; then
-                echo -e "${yellow}Disabling remote management...${plain}"
-                sed -i "s/^THEFEED_ALLOW_MANAGE=.*/THEFEED_ALLOW_MANAGE=0/" "$DATA_DIR/thefeed.env"
-            else
-                echo -e "${yellow}Enabling remote management...${plain}"
-                if grep -q "^THEFEED_ALLOW_MANAGE=" "$DATA_DIR/thefeed.env"; then
-                    sed -i "s/^THEFEED_ALLOW_MANAGE=.*/THEFEED_ALLOW_MANAGE=1/" "$DATA_DIR/thefeed.env"
-                else
-                    echo "THEFEED_ALLOW_MANAGE=1" >> "$DATA_DIR/thefeed.env"
-                fi
-            fi
-            set -a
-            source "$DATA_DIR/thefeed.env"
-            set +a
-        fi
-
-        install_service
-        start_service
     fi
+    install_service
+    start_service
 
     echo -e "\n${green}═══════════════════════════════════════${plain}"
     echo -e "${green}  thefeed ${version} installed successfully!${plain}"

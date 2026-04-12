@@ -76,7 +76,7 @@ func startDNSServerEx(t *testing.T, domain, passphrase string, allowManage bool,
 		channelsFile = f.Name()
 	}
 
-	dnsServer := server.NewDNSServer(addr, domain, feed, qk, rk, protocol.DefaultMaxPadding, nil, allowManage, channelsFile, false)
+	dnsServer := server.NewDNSServer(addr, domain, feed, qk, rk, protocol.DefaultMaxPadding, nil, allowManage, channelsFile, nil, false)
 
 	ctx, cancel := context.WithCancel(context.Background())
 

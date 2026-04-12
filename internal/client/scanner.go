@@ -166,8 +166,19 @@ func (rs *ResolverScanner) Progress() ScannerProgress {
 func (rs *ResolverScanner) Start(cfg ScannerConfig) error {
 	rs.mu.Lock()
 	if rs.state == ScannerRunning || rs.state == ScannerPaused {
-		rs.mu.Unlock()
-		return fmt.Errorf("scanner already running")
+		// Allow restart if the scan is effectively complete (all IPs
+		// scanned) but the goroutine hasn't returned yet.
+		total := rs.total.Load()
+		scanned := rs.scanned.Load()
+		if total <= 0 || scanned < total {
+			rs.mu.Unlock()
+			return fmt.Errorf("scanner already running")
+		}
+		// Effectively done — cancel the lingering goroutine and proceed.
+		if rs.cancel != nil {
+			rs.cancel()
+		}
+		rs.state = ScannerIdle
 	}
 
 	// Derive keys.

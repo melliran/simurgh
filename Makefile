@@ -44,7 +44,7 @@ clean:
 	rm -rf $(BUILD_DIR)
 
 # Cross-compilation targets
-build-all: build-linux-amd64 build-linux-arm64 build-darwin-amd64 build-darwin-arm64 build-windows-amd64 build-android-arm64
+build-all: build-linux-amd64 build-linux-arm64 build-darwin-amd64 build-darwin-arm64 build-freebsd-amd64 build-freebsd-arm64 build-windows-amd64 build-android-arm64
 
 build-linux-amd64:
 	@mkdir -p $(BUILD_DIR)
@@ -65,6 +65,16 @@ build-darwin-arm64:
 	@mkdir -p $(BUILD_DIR)
 	GOOS=darwin GOARCH=arm64 go build $(GOFLAGS) -o $(BUILD_DIR)/$(BINARY_SERVER)-darwin-arm64 ./cmd/server
 	GOOS=darwin GOARCH=arm64 go build $(GOFLAGS) -o $(BUILD_DIR)/$(BINARY_CLIENT)-darwin-arm64 ./cmd/client
+
+build-freebsd-amd64:
+	@mkdir -p $(BUILD_DIR)
+	GOOS=freebsd GOARCH=amd64 go build $(GOFLAGS) -o $(BUILD_DIR)/$(BINARY_SERVER)-freebsd-amd64 ./cmd/server
+	GOOS=freebsd GOARCH=amd64 go build $(GOFLAGS) -o $(BUILD_DIR)/$(BINARY_CLIENT)-freebsd-amd64 ./cmd/client
+
+build-freebsd-arm64:
+	@mkdir -p $(BUILD_DIR)
+	GOOS=freebsd GOARCH=arm64 go build $(GOFLAGS) -o $(BUILD_DIR)/$(BINARY_SERVER)-freebsd-arm64 ./cmd/server
+	GOOS=freebsd GOARCH=arm64 go build $(GOFLAGS) -o $(BUILD_DIR)/$(BINARY_CLIENT)-freebsd-arm64 ./cmd/client
 
 build-windows-amd64:
 	@mkdir -p $(BUILD_DIR)

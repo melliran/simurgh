@@ -301,6 +301,11 @@
       margin-left: 4px
     }
 
+    .ch-type-tag.x-tag {
+      background: rgba(29, 161, 242, .2);
+      color: #72c9ff
+    }
+
     /* ===== RTL MESSAGES ===== */
     .msg.rtl-msg {
       direction: rtl
@@ -1644,7 +1649,7 @@
         version: 'نسخه',
         edit: 'ویرایش', share: 'اشتراک\u200cگذاری', delete: 'حذف', save: 'ذخیره', cancel: 'لغو',
         copied: 'کپی شد!', copy: 'کپی', active: 'فعال',
-        private: 'خصوصی', no_config: 'ابتدا پروفایل را ذخیره کنید',
+        private: 'خصوصی', x_posts: 'پست‌های X', x_label: 'X', no_config: 'ابتدا پروفایل را ذخیره کنید',
         refreshing: 'در حال بروزرسانی...', fetching_channel: 'در حال دریافت کانال...',
         msg_copied: 'پیام کپی شد!', rescan_started: 'بررسی مجدد شروع شد',
         add_manual: '✎ ساخت دستی', rescan: 'بررسی مجدد',
@@ -1725,7 +1730,7 @@
         version: 'Version',
         edit: 'Edit', share: 'Share', delete: 'Delete', save: 'Save', cancel: 'Cancel',
         copied: 'URI copied!', copy: 'Copy', active: 'Active',
-        private: 'Private', no_config: 'Save a profile first',
+        private: 'Private', x_posts: 'X Posts', x_label: 'X', no_config: 'Save a profile first',
         refreshing: 'Refreshing...', fetching_channel: 'Fetching channel...',
         msg_copied: 'Message copied!', rescan_started: 'Rescan started',
         add_manual: '✎ Create Manually', rescan: 'Rescan',
@@ -2300,26 +2305,38 @@
           _updateRefreshBadge(); return;
         }
       }
-      var pubs = [], privs = [];
-      for (var i = 0; i < channels.length; i++) { var c = channels[i]; (c.ChatType === 1 || c.chatType === 1 ? privs : pubs).push({ ch: c, idx: i }) }
+      var pubs = [], privs = [], xposts = [];
+      for (var i = 0; i < channels.length; i++) {
+        var c = channels[i];
+        var ct = c.ChatType || c.chatType || 0;
+        if (ct === 2) xposts.push({ ch: c, idx: i });
+        else if (ct === 1) privs.push({ ch: c, idx: i });
+        else pubs.push({ ch: c, idx: i });
+      }
       function section(title, items) {
         if (!items.length) return ''; var h = '';
         if (title) h += '<div class="channel-section-title">' + esc(title) + '</div>';
         for (var j = 0; j < items.length; j++) {
           var e = items[j], num2 = e.idx + 1;
           var name = e.ch.Name || e.ch.name || 'Channel ' + num2;
+          var ct2 = e.ch.ChatType || e.ch.chatType || 0;
           var isPriv = e.ch.ChatType === 1 || e.ch.chatType === 1;
+          var isX = ct2 === 2;
+          var avatarName = name;
+          if (isX && avatarName.toLowerCase().indexOf('x/') === 0) avatarName = avatarName.substring(2);
+          if (avatarName.charAt(0) === '@') avatarName = avatarName.substring(1);
+          var avatarText = (avatarName || '?').charAt(0).toUpperCase();
           var active = num2 === selectedChannel ? ' active' : '';
           var lastID = e.ch.LastMsgID || e.ch.lastMsgID || 0;
           var badge = (previousMsgIDs[num2] > 0 && lastID > previousMsgIDs[num2] && num2 !== selectedChannel) ? '<span class="ch-badge">NEW</span>' : '';
           h += '<div class="ch-item' + active + '" data-name="' + esc(name) + '" onclick="selectChannel(' + num2 + ')">';
-          h += '<div class="ch-avatar">' + esc(name.charAt(0).toUpperCase()) + '</div>';
-          h += '<div class="ch-info"><div class="ch-name">' + esc(name) + (isPriv ? '<span class="ch-type-tag">' + t('private') + '</span>' : '') + '</div>';
+          h += '<div class="ch-avatar">' + esc(avatarText) + '</div>';
+          h += '<div class="ch-info"><div class="ch-name">' + esc(name) + (isPriv ? '<span class="ch-type-tag">' + t('private') + '</span>' : (isX ? '<span class="ch-type-tag x-tag">' + t('x_label') + '</span>' : '')) + '</div>';
           h += '<div class="ch-preview">' + badge + '</div></div></div>';
         }
         return h;
       }
-      el.innerHTML = section('', pubs) + section(t('private'), privs);
+      el.innerHTML = section('', pubs) + section(t('x_posts'), xposts) + section(t('private'), privs);
       _updateRefreshBadge();
     }
     function _updateRefreshBadge() {

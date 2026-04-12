@@ -1,6 +1,6 @@
 # thefeed
 
-DNS-based feed reader for Telegram channels. Designed for environments where only DNS queries work.
+DNS-based feed reader for Telegram channels and public X accounts. Designed for environments where only DNS queries work.
 
 [English](README.md) | [فارسی](README-FA.md)
 
@@ -15,6 +15,7 @@ DNS-based feed reader for Telegram channels. Designed for environments where onl
 
 **Server** (runs outside censored network):
 - Connects to Telegram, reads messages from configured channels
+- Fetches public X posts from configured usernames via RSS-compatible public mirrors (no login)
 - Serves feed data as encrypted DNS TXT responses
 - Random padding on responses to vary size (anti-DPI)
 - Session persistence — login once, run forever
@@ -32,6 +33,7 @@ DNS-based feed reader for Telegram channels. Designed for environments where onl
 - Web UI password protection (`--password` on client)
 - New message indicators and next-fetch countdown timer
 - Channel type badges (Private/Public)
+- X channel badges (`x/username`) with separate color in the sidebar
 - Media type detection (`[IMAGE]`, `[VIDEO]`, etc.)
 - Live DNS query log in the browser
 
@@ -66,7 +68,7 @@ sudo bash install.sh
 
 The script will:
 1. Download the latest release binary from GitHub
-2. Ask for your domain, passphrase, and channels
+2. Ask for your domain, passphrase, Telegram channels, and X accounts
 3. Ask whether to use Telegram login (recommended: **No** — public channels work without it)
 4. If Telegram mode: ask for API credentials and login
 5. Set up a systemd service
@@ -113,9 +115,9 @@ make build-server
   --listen ":53"
 ```
 
-All data files (session, channels) are stored in the `--data-dir` directory (default: `./data`).
+All data files (session, channels, x accounts) are stored in the `--data-dir` directory (default: `./data`).
 
-Environment variables: `THEFEED_DOMAIN`, `THEFEED_KEY`, `THEFEED_MSG_LIMIT`, `THEFEED_ALLOW_MANAGE` (set to `0` to force-disable even if the flag is baked into the service), `TELEGRAM_API_ID`, `TELEGRAM_API_HASH`, `TELEGRAM_PHONE`, `TELEGRAM_PASSWORD`
+Environment variables: `THEFEED_DOMAIN`, `THEFEED_KEY`, `THEFEED_MSG_LIMIT`, `THEFEED_ALLOW_MANAGE` (set to `0` to force-disable even if the flag is baked into the service), `THEFEED_X_RSS_INSTANCES`, `TELEGRAM_API_ID`, `TELEGRAM_API_HASH`, `TELEGRAM_PHONE`, `TELEGRAM_PASSWORD`
 
 #### Server Flags
 
@@ -125,6 +127,8 @@ Environment variables: `THEFEED_DOMAIN`, `THEFEED_KEY`, `THEFEED_MSG_LIMIT`, `TH
 | `--domain` | | DNS domain (required) |
 | `--key` | | Encryption passphrase (required) |
 | `--channels` | `{data-dir}/channels.txt` | Path to channels file |
+| `--x-accounts` | `{data-dir}/x_accounts.txt` | Path to X usernames file |
+| `--x-rss-instances` | `http://nitter.net,https://nitter.net` | Comma-separated X RSS base URLs |
 | `--api-id` | | Telegram API ID (required) |
 | `--api-hash` | | Telegram API Hash (required) |
 | `--phone` | | Telegram phone number (required) |
@@ -185,6 +189,8 @@ chmod +x thefeed-client
 
 > download it from the latest release assets: `thefeed-android-arm64.apk`
 
+Also available: `thefeed-android-arm64-upx.apk` (UPX-compressed embedded client).
+
 
 You can build or download a native Android app that:
 - runs thefeed client binary in a foreground/background service
@@ -223,7 +229,7 @@ adb install -r android/app/build/outputs/apk/debug/app-debug.apk
 ### Web UI
 
 The browser-based UI has:
-- **Channels sidebar** (left): channel list grouped by type (Public/Private) with badges
+- **Channels sidebar** (left): channel list grouped by type (Public/X/Private) with badges
 - **Messages panel** (right): messages with native RTL/Farsi rendering (VazirMatn font)
 - **Send panel**: send messages to channels and private chats when Telegram is connected
 - **New message badges**: visual indicators for channels with new messages
@@ -276,7 +282,8 @@ Rule:
 
 Release assets include:
 - Server/client binaries for all current target platforms
-- Native Android wrapper APK: `thefeed-android-arm64.apk`
+- Native Android wrapper APK (raw client): `thefeed-android-arm64.apk`
+- Native Android wrapper APK (UPX client): `thefeed-android-arm64-upx.apk`
 
 ## DNS Records Setup
 
@@ -320,6 +327,21 @@ This delegates all DNS queries for `t.example.com` (and its subdomains) to your 
 # Comments start with #
 @VahidOnline
 ```
+
+## x_accounts.txt Format
+
+```
+# Comments start with #
+Vahid
+```
+
+## X Fetch Safety
+
+- X fetching uses RSS/XML only.
+- Instance URLs are validated (`http`/`https`, host-only, no path/query/fragment).
+- Response body size is capped and request timeouts are enforced.
+- If a mirror returns `403`/fails, the server automatically tries the next configured instance.
+- Recommended: set your own trusted mirror list with `--x-rss-instances` (or `THEFEED_X_RSS_INSTANCES`).
 
 ## Security
 

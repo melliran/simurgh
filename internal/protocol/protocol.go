@@ -64,6 +64,7 @@ type ChatType uint8
 const (
 	ChatTypeChannel ChatType = 0 // public Telegram channel
 	ChatTypePrivate ChatType = 1 // private chat / bot
+	ChatTypeX       ChatType = 2 // public X (Twitter) account
 )
 
 // Metadata holds channel 0 data: server info + channel list.
@@ -81,7 +82,7 @@ type ChannelInfo struct {
 	Blocks      uint16
 	LastMsgID   uint32
 	ContentHash uint32   // CRC32 of serialized message data; changes on edits
-	ChatType    ChatType // 0=channel, 1=private
+	ChatType    ChatType // 0=Telegram channel, 1=private chat, 2=X account
 	CanSend     bool     // true if server allows sending messages to this chat
 }
 

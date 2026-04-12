@@ -34,6 +34,10 @@ jobs:
             goarch: amd64
           - goos: darwin
             goarch: arm64
+          - goos: freebsd
+            goarch: amd64
+          - goos: freebsd
+            goarch: arm64
           - goos: windows
             goarch: amd64
           - goos: android
@@ -98,6 +102,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
@@ -112,7 +120,14 @@ jobs:
           # the arm64 APK only contains arm64-v8a and universal contains all three.
           mkdir -p android/app/src/main/jniLibs/arm64-v8a
           test -f artifacts/thefeed-client-android-arm64
-          cp artifacts/thefeed-client-android-arm64 android/app/src/main/jniLibs/arm64-v8a/libthefeed.so
+
+      - name: Build raw Android client binary (non-UPX)
+        run: |
+          VERSION=${GITHUB_REF_NAME:-dev}
+          COMMIT=$(git rev-parse --short HEAD)
+          DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          LDFLAGS="-s -w -X github.com/sartoopjj/thefeed/internal/version.Version=${VERSION} -X github.com/sartoopjj/thefeed/internal/version.Commit=${COMMIT} -X github.com/sartoopjj/thefeed/internal/version.Date=${DATE}"
+          GOOS=android GOARCH=arm64 CGO_ENABLED=0 go build -trimpath -ldflags="${LDFLAGS}" -o artifacts/thefeed-client-android-arm64-raw ./cmd/client
 
       - name: Decode signing keystore
         env:
@@ -134,7 +149,7 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Build APK
+      - name: Build APK variants (UPX and raw)
         working-directory: android
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
@@ -142,23 +157,25 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           gradle wrapper --gradle-version 8.10.2
-          if [ -f app/keystore.jks ]; then
-            ./gradlew --no-daemon assembleRelease
-          else
-            ./gradlew --no-daemon assembleDebug
-          fi
+          if [ -f app/keystore.jks ]; then BT=release; TASK=assembleRelease; else BT=debug; TASK=assembleDebug; fi
 
-      - name: Rename APK
-        run: |
-          if [ -f android/app/keystore.jks ]; then BT=release; SUFFIX=release; else BT=debug; SUFFIX=debug; fi
-          APK=$(find android/app/build/outputs/apk/$BT -name "*.apk" | head -1)
-          cp "$APK" artifacts/thefeed-android-arm64.apk
+          cp ../artifacts/thefeed-client-android-arm64 app/src/main/jniLibs/arm64-v8a/libthefeed.so
+          ./gradlew --no-daemon clean $TASK
+          APK_UPX=$(find app/build/outputs/apk/$BT -name "*.apk" | head -1)
+          cp "$APK_UPX" ../artifacts/thefeed-android-arm64-upx.apk
+
+          cp ../artifacts/thefeed-client-android-arm64-raw app/src/main/jniLibs/arm64-v8a/libthefeed.so
+          ./gradlew --no-daemon clean $TASK
+          APK_RAW=$(find app/build/outputs/apk/$BT -name "*.apk" | head -1)
+          cp "$APK_RAW" ../artifacts/thefeed-android-arm64.apk
 
       - name: Upload Android APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: thefeed-android-apk
-          path: artifacts/thefeed-android-arm64.apk
+          path: |
+            artifacts/thefeed-android-arm64.apk
+            artifacts/thefeed-android-arm64-upx.apk
 
   release:
     needs: [build, android-apk]

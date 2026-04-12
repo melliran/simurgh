@@ -27,12 +27,14 @@ type DNSServer struct {
 	feed         *Feed
 	reader       *TelegramReader // nil when --no-telegram
 	channelCtl   channelRefresher
+	refreshers   []channelRefresher
 	queryKey     [protocol.KeySize]byte
 	responseKey  [protocol.KeySize]byte
 	listenAddr   string
 	maxPadding   int
 	allowManage  bool   // if true, admin/send commands are accepted
 	channelsFile string // path to channels.txt for admin commands
+	xAccounts    []string
 
 	sessionsMu sync.Mutex
 	sessions   map[uint16]*uploadSession
@@ -74,18 +76,20 @@ type channelRefresher interface {
 }
 
 // NewDNSServer creates a DNS server for the given domain.
-func NewDNSServer(listenAddr, domain string, feed *Feed, queryKey, responseKey [protocol.KeySize]byte, maxPadding int, reader *TelegramReader, allowManage bool, channelsFile string, debug bool) *DNSServer {
+func NewDNSServer(listenAddr, domain string, feed *Feed, queryKey, responseKey [protocol.KeySize]byte, maxPadding int, reader *TelegramReader, allowManage bool, channelsFile string, xAccounts []string, debug bool) *DNSServer {
 	s := &DNSServer{
 		domain:       strings.TrimSuffix(domain, "."),
 		feed:         feed,
 		reader:       reader,
 		channelCtl:   reader,
+		refreshers:   nil,
 		queryKey:     queryKey,
 		responseKey:  responseKey,
 		listenAddr:   listenAddr,
 		maxPadding:   maxPadding,
 		allowManage:  allowManage,
 		channelsFile: channelsFile,
+		xAccounts:    append([]string{}, xAccounts...),
 		sessions:     make(map[uint16]*uploadSession),
 		reportCh:     make(chan reportEvent, reportChannelBuffer),
 		debug:        debug,
@@ -97,6 +101,16 @@ func NewDNSServer(listenAddr, domain string, feed *Feed, queryKey, responseKey [
 // for admin update/refresh operations.
 func (s *DNSServer) SetChannelRefresher(channelCtl channelRefresher) {
 	s.channelCtl = channelCtl
+	if channelCtl != nil {
+		s.refreshers = append(s.refreshers, channelCtl)
+	}
+}
+
+// AddRefresher adds an additional source refresher (e.g., X reader) for admin refresh.
+func (s *DNSServer) AddRefresher(channelCtl channelRefresher) {
+	if channelCtl != nil {
+		s.refreshers = append(s.refreshers, channelCtl)
+	}
 }
 
 // ListenAndServe starts the DNS server on UDP, shutting down when ctx is cancelled.
@@ -508,7 +522,7 @@ func (s *DNSServer) adminAddChannel(username string) (string, error) {
 
 	all, err := loadChannelsFromFile(s.channelsFile)
 	if err == nil {
-		s.feed.SetChannels(all)
+		s.feed.SetChannels(combineDisplayChannels(all, s.xAccounts))
 		if s.channelCtl != nil {
 			s.channelCtl.UpdateChannels(all)
 			s.channelCtl.RequestRefresh()
@@ -554,7 +568,7 @@ func (s *DNSServer) adminRemoveChannel(username string) (string, error) {
 
 	log.Printf("[admin] removed channel @%s", username)
 
-	s.feed.SetChannels(remaining)
+	s.feed.SetChannels(combineDisplayChannels(remaining, s.xAccounts))
 	if s.channelCtl != nil {
 		s.channelCtl.UpdateChannels(remaining)
 		s.channelCtl.RequestRefresh()
@@ -572,10 +586,12 @@ func (s *DNSServer) adminListChannels() (string, error) {
 }
 
 func (s *DNSServer) adminRefresh() (string, error) {
-	if s.channelCtl == nil {
+	if len(s.refreshers) == 0 {
 		return "", fmt.Errorf("no active channel reader")
 	}
-	s.channelCtl.RequestRefresh()
+	for _, refresher := range s.refreshers {
+		refresher.RequestRefresh()
+	}
 	log.Printf("[admin] hard refresh requested")
 	return "OK", nil
 }
@@ -597,6 +613,15 @@ func loadChannelsFromFile(path string) ([]string, error) {
 		channels = append(channels, strings.TrimPrefix(line, "@"))
 	}
 	return channels, scanner.Err()
+}
+
+func combineDisplayChannels(telegramChannels, xAccounts []string) []string {
+	combined := make([]string, 0, len(telegramChannels)+len(xAccounts))
+	combined = append(combined, telegramChannels...)
+	for _, account := range xAccounts {
+		combined = append(combined, "x/"+account)
+	}
+	return combined
 }
 
 func resolverHost(addr net.Addr) string {
