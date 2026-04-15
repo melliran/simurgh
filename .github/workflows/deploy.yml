@@ -45,10 +45,8 @@ jobs:
             COMMIT=${{ github.sha }}
             DATE=${{ github.event.head_commit.timestamp }}
 
-      - name: Deploy to Hetzner
+      - name: Prepare deploy files
         env:
-          SSH_KEY: ${{ secrets.SSH_KEY }}
-          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           THEFEED_DOMAIN: ${{ secrets.THEFEED_DOMAIN }}
           THEFEED_KEY: ${{ secrets.THEFEED_KEY }}
           TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
@@ -56,102 +54,56 @@ jobs:
           TELEGRAM_PHONE: ${{ secrets.TELEGRAM_PHONE }}
           THEFEED_CHANNELS: ${{ secrets.THEFEED_CHANNELS }}
           THEFEED_X_ACCOUNTS: ${{ secrets.THEFEED_X_ACCOUNTS }}
-          TELEGRAM_SESSION_B64: ${{ secrets.TELEGRAM_SESSION_B64 }}
           FEED_PASSWORD: ${{ secrets.FEED_PASSWORD }}
+          TELEGRAM_SESSION_B64: ${{ secrets.TELEGRAM_SESSION_B64 }}
+        run: |
+          mkdir -p deploy
+
+          # .env
+          cat > deploy/.env << 'EOF'
+          EOF
+          printf 'THEFEED_DOMAIN=%s\n' "$THEFEED_DOMAIN" >> deploy/.env
+          printf 'THEFEED_KEY=%s\n' "$THEFEED_KEY" >> deploy/.env
+          printf 'TELEGRAM_API_ID=%s\n' "$TELEGRAM_API_ID" >> deploy/.env
+          printf 'TELEGRAM_API_HASH=%s\n' "$TELEGRAM_API_HASH" >> deploy/.env
+          printf 'TELEGRAM_PHONE=%s\n' "$TELEGRAM_PHONE" >> deploy/.env
+          printf 'THEFEED_CHANNELS=%s\n' "$THEFEED_CHANNELS" >> deploy/.env
+          printf 'THEFEED_X_ACCOUNTS=%s\n' "$THEFEED_X_ACCOUNTS" >> deploy/.env
+          printf 'FEED_PASSWORD=%s\n' "$FEED_PASSWORD" >> deploy/.env
+
+          # session.json
+          echo "$TELEGRAM_SESSION_B64" | base64 -d > deploy/session.json
+
+          # Caddyfile
+          cp Caddyfile deploy/Caddyfile
+
+          # docker-compose.yml
+          cp docker-compose.server.yml deploy/docker-compose.yml
+
+      - name: Deploy to Hetzner
+        env:
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p ~/.ssh
           echo "$SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
 
-          ssh -i ~/.ssh/deploy_key \
-            -o StrictHostKeyChecking=no \
-            -o ConnectTimeout=10 \
-            root@188.245.42.219 \
-            GHCR_TOKEN="$GHCR_TOKEN" \
-            THEFEED_DOMAIN="$THEFEED_DOMAIN" \
-            THEFEED_KEY="$THEFEED_KEY" \
-            TELEGRAM_API_ID="$TELEGRAM_API_ID" \
-            TELEGRAM_API_HASH="$TELEGRAM_API_HASH" \
-            TELEGRAM_PHONE="$TELEGRAM_PHONE" \
-            THEFEED_CHANNELS="$THEFEED_CHANNELS" \
-            THEFEED_X_ACCOUNTS="$THEFEED_X_ACCOUNTS" \
-            TELEGRAM_SESSION_B64="$TELEGRAM_SESSION_B64" \
-            FEED_PASSWORD="$FEED_PASSWORD" \
-            bash << 'SSHEOF'
-          set -e
+          # Create remote directories
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no root@188.245.42.219 \
+            "mkdir -p /opt/simurgh/data /opt/simurgh/clientdata /opt/simurgh/caddy/data /opt/simurgh/caddy/config && chown -R 1000:1000 /opt/simurgh/data /opt/simurgh/clientdata"
 
-          mkdir -p /opt/simurgh/data /opt/simurgh/clientdata /opt/simurgh/caddy/data /opt/simurgh/caddy/config
-          chown -R 1000:1000 /opt/simurgh/data /opt/simurgh/clientdata
+          # Copy files
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            deploy/.env deploy/session.json deploy/Caddyfile deploy/docker-compose.yml \
+            root@188.245.42.219:/opt/simurgh/
 
-          echo "$GHCR_TOKEN" | docker login ghcr.io -u melliran --password-stdin
+          # Move session.json into data dir
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no root@188.245.42.219 \
+            "mv /opt/simurgh/session.json /opt/simurgh/data/session.json"
 
-          echo "$TELEGRAM_SESSION_B64" | base64 -d > /opt/simurgh/data/session.json
+          # Pull images and restart
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no root@188.245.42.219 \
+            "echo '$GHCR_TOKEN' | docker login ghcr.io -u melliran --password-stdin && cd /opt/simurgh && docker compose pull && docker compose up -d"
 
-          cat > /opt/simurgh/.env << ENVEOF
-THEFEED_DOMAIN=$THEFEED_DOMAIN
-THEFEED_KEY=$THEFEED_KEY
-TELEGRAM_API_ID=$TELEGRAM_API_ID
-TELEGRAM_API_HASH=$TELEGRAM_API_HASH
-TELEGRAM_PHONE=$TELEGRAM_PHONE
-THEFEED_CHANNELS=$THEFEED_CHANNELS
-THEFEED_X_ACCOUNTS=$THEFEED_X_ACCOUNTS
-FEED_PASSWORD=$FEED_PASSWORD
-ENVEOF
-
-          cat > /opt/simurgh/Caddyfile << 'CADDYEOF'
-feed.melliran.com {
-    reverse_proxy client:8080
-}
-CADDYEOF
-
-          cat > /opt/simurgh/docker-compose.yml << 'COMPOSEEOF'
-services:
-  server:
-    image: ghcr.io/melliran/simurgh:latest
-    container_name: simurgh-server
-    restart: unless-stopped
-    ports:
-      - "5300:5300/udp"
-    volumes:
-      - ./data:/data
-    env_file:
-      - .env
-    command: >-
-      --data-dir /data
-      --listen :5300
-      --domain ${THEFEED_DOMAIN}
-      --key ${THEFEED_KEY}
-      --api-id ${TELEGRAM_API_ID}
-      --api-hash ${TELEGRAM_API_HASH}
-      --phone ${TELEGRAM_PHONE}
-
-  client:
-    image: ghcr.io/melliran/simurgh-client:latest
-    container_name: simurgh-client
-    restart: unless-stopped
-    volumes:
-      - ./clientdata:/clientdata
-    command: >-
-      --data-dir /clientdata
-      --port 8080
-      --password ${FEED_PASSWORD}
-
-  caddy:
-    image: caddy:2-alpine
-    container_name: simurgh-caddy
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - ./caddy/data:/data
-      - ./caddy/config:/config
-COMPOSEEOF
-
-          cd /opt/simurgh
-          docker compose pull
-          docker compose up -d
           echo "Deployed successfully"
-          SSHEOF

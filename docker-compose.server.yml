@@ -1,0 +1,45 @@
+services:
+  server:
+    image: ghcr.io/melliran/simurgh:latest
+    container_name: simurgh-server
+    restart: unless-stopped
+    ports:
+      - "5300:5300/udp"
+    volumes:
+      - ./data:/data
+    env_file:
+      - .env
+    command: >-
+      --data-dir /data
+      --listen :5300
+      --domain ${THEFEED_DOMAIN}
+      --key ${THEFEED_KEY}
+      --api-id ${TELEGRAM_API_ID}
+      --api-hash ${TELEGRAM_API_HASH}
+      --phone ${TELEGRAM_PHONE}
+
+  client:
+    image: ghcr.io/melliran/simurgh-client:latest
+    container_name: simurgh-client
+    restart: unless-stopped
+    volumes:
+      - ./clientdata:/clientdata
+    env_file:
+      - .env
+    command: >-
+      --data-dir /clientdata
+      --port 8080
+      --password ${FEED_PASSWORD}
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: simurgh-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./caddy/data:/data
+      - ./caddy/config:/config
