@@ -31,15 +31,3 @@ services:
       --port 8080
       --password ${FEED_PASSWORD}
 
-  caddy:
-    image: caddy:2-alpine
-    container_name: simurgh-caddy
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - ./caddy/data:/data
-      - ./caddy/config:/config
