@@ -224,7 +224,7 @@ func (s *Server) Run() error {
 	mux.HandleFunc("/api/scanner/presets", s.handleScannerPresets)
 	mux.HandleFunc("/", s.handleIndex)
 
-	addr := fmt.Sprintf("127.0.0.1:%d", s.port)
+	addr := fmt.Sprintf("0.0.0.0:%d", s.port)
 	log.Printf("thefeed client %s", version.Version)
 	fmt.Printf("\n  Open in browser: http://%s\n\n", addr)
 
