@@ -46,15 +46,6 @@ services:
       --listen :5300
       --domain ${THEFEED_DOMAIN}
       --key ${THEFEED_KEY}
-      --no-telegram
-    # To enable Telegram mode:
-    # 1. Run login-only first (see instructions above)
-    # 2. Replace the command above with:
-    # command: >-
-    #   --data-dir /data
-    #   --listen :5300
-    #   --domain ${THEFEED_DOMAIN}
-    #   --key ${THEFEED_KEY}
-    #   --api-id ${TELEGRAM_API_ID}
-    #   --api-hash ${TELEGRAM_API_HASH}
-    #   --phone ${TELEGRAM_PHONE}
+      --api-id ${TELEGRAM_API_ID}
+      --api-hash ${TELEGRAM_API_HASH}
+      --phone ${TELEGRAM_PHONE}
