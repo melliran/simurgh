@@ -23,7 +23,7 @@ session.json
 
 # Environment files
 .env
-.env.local
+.env.*
 
 todo
 todo.md
