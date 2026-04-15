@@ -32,6 +32,13 @@ RUN CGO_ENABLED=0 go build -trimpath \
       -X github.com/sartoopjj/thefeed/internal/version.Date=${DATE}" \
     -o /thefeed-server ./cmd/server
 
+RUN CGO_ENABLED=0 go build -trimpath \
+    -ldflags="-s -w \
+      -X github.com/sartoopjj/thefeed/internal/version.Version=${VERSION} \
+      -X github.com/sartoopjj/thefeed/internal/version.Commit=${COMMIT} \
+      -X github.com/sartoopjj/thefeed/internal/version.Date=${DATE}" \
+    -o /thefeed-client ./cmd/client
+
 # ---- Stage 2: Runtime ----
 FROM alpine:3.21
 

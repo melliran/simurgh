@@ -1,0 +1,22 @@
+# ---- Runtime image for thefeed-client ----
+# Built from the same builder stage as the server.
+# Usage: built via docker-compose, not standalone.
+
+FROM alpine:3.21
+
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
+
+RUN adduser -D -u 1000 -h /clientdata thefeed
+
+COPY --from=builder /thefeed-client /usr/local/bin/thefeed-client
+
+VOLUME /clientdata
+
+EXPOSE 8080/tcp
+
+USER thefeed
+WORKDIR /clientdata
+
+ENTRYPOINT ["thefeed-client"]
+CMD ["--data-dir", "/clientdata", "--port", "8080"]
