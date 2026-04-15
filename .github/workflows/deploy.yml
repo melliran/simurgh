@@ -35,6 +35,7 @@ jobs:
       - name: Deploy to Hetzner
         env:
           SSH_KEY: ${{ secrets.SSH_KEY }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           THEFEED_DOMAIN: ${{ secrets.THEFEED_DOMAIN }}
           THEFEED_KEY: ${{ secrets.THEFEED_KEY }}
           TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
@@ -49,21 +50,33 @@ jobs:
           echo "$SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
 
-          # Deploy via SSH
+          # Deploy via SSH — pass secrets as env vars to avoid heredoc quoting issues
           ssh -i ~/.ssh/deploy_key \
             -o StrictHostKeyChecking=no \
-            root@188.245.42.219 bash -s << EOF
+            -o ConnectTimeout=10 \
+            root@188.245.42.219 \
+            GHCR_TOKEN="$GHCR_TOKEN" \
+            THEFEED_DOMAIN="$THEFEED_DOMAIN" \
+            THEFEED_KEY="$THEFEED_KEY" \
+            TELEGRAM_API_ID="$TELEGRAM_API_ID" \
+            TELEGRAM_API_HASH="$TELEGRAM_API_HASH" \
+            TELEGRAM_PHONE="$TELEGRAM_PHONE" \
+            THEFEED_CHANNELS="$THEFEED_CHANNELS" \
+            THEFEED_X_ACCOUNTS="$THEFEED_X_ACCOUNTS" \
+            TELEGRAM_SESSION_B64="$TELEGRAM_SESSION_B64" \
+            bash << 'SSHEOF'
+          set -e
 
-            set -e
+          mkdir -p /opt/simurgh/data
 
-            # Create directory
-            mkdir -p /opt/simurgh/data
+          # Authenticate with ghcr.io so we can pull the private image
+          echo "$GHCR_TOKEN" | docker login ghcr.io -u melliran --password-stdin
 
-            # Write session.json from secret
-            echo "$TELEGRAM_SESSION_B64" | base64 -d > /opt/simurgh/data/session.json
+          # Write session.json
+          echo "$TELEGRAM_SESSION_B64" | base64 -d > /opt/simurgh/data/session.json
 
-            # Write .env
-            cat > /opt/simurgh/.env << 'ENVEOF'
+          # Write .env
+          cat > /opt/simurgh/.env << ENVEOF
           THEFEED_DOMAIN=$THEFEED_DOMAIN
           THEFEED_KEY=$THEFEED_KEY
           TELEGRAM_API_ID=$TELEGRAM_API_ID
@@ -73,8 +86,8 @@ jobs:
           THEFEED_X_ACCOUNTS=$THEFEED_X_ACCOUNTS
           ENVEOF
 
-            # Write docker-compose.yml
-            cat > /opt/simurgh/docker-compose.yml << 'COMPOSEEOF'
+          # Write docker-compose.yml (only changes on first deploy)
+          cat > /opt/simurgh/docker-compose.yml << 'COMPOSEEOF'
           services:
             server:
               image: ghcr.io/melliran/simurgh:latest
@@ -89,16 +102,15 @@ jobs:
               command: >-
                 --data-dir /data
                 --listen :5300
-                --domain \${THEFEED_DOMAIN}
-                --key \${THEFEED_KEY}
-                --api-id \${TELEGRAM_API_ID}
-                --api-hash \${TELEGRAM_API_HASH}
-                --phone \${TELEGRAM_PHONE}
+                --domain ${THEFEED_DOMAIN}
+                --key ${THEFEED_KEY}
+                --api-id ${TELEGRAM_API_ID}
+                --api-hash ${TELEGRAM_API_HASH}
+                --phone ${TELEGRAM_PHONE}
           COMPOSEEOF
 
-            # Pull new image and restart
-            cd /opt/simurgh
-            docker compose pull
-            docker compose up -d
-            echo "Deployed successfully"
-          EOF
+          cd /opt/simurgh
+          docker compose pull
+          docker compose up -d
+          echo "Deployed successfully"
+          SSHEOF
