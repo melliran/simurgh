@@ -98,6 +98,19 @@ func main() {
 		*xRSSInstances = os.Getenv("THEFEED_X_RSS_INSTANCES")
 	}
 
+	// Populate channels files from env vars if provided.
+	// THEFEED_CHANNELS and THEFEED_X_ACCOUNTS override the files entirely.
+	if v := os.Getenv("THEFEED_CHANNELS"); v != "" {
+		if err := writeUsernamesEnv(*channelsFile, v); err != nil {
+			log.Fatalf("Write channels from env: %v", err)
+		}
+	}
+	if v := os.Getenv("THEFEED_X_ACCOUNTS"); v != "" {
+		if err := writeUsernamesEnv(*xAccountsFile, v); err != nil {
+			log.Fatalf("Write X accounts from env: %v", err)
+		}
+	}
+
 	if *domain == "" || *key == "" {
 		fmt.Fprintln(os.Stderr, "Error: --domain and --key are required")
 		flag.Usage()
@@ -184,4 +197,20 @@ func main() {
 		log.Fatalf("Server error: %v", err)
 	}
 	log.Println("Server stopped")
+}
+
+// writeUsernamesEnv writes a comma-separated list of usernames to a file,
+// one per line, stripping leading @ signs. Used to populate channel files
+// from environment variables (THEFEED_CHANNELS, THEFEED_X_ACCOUNTS).
+func writeUsernamesEnv(path, csv string) error {
+	var lines []string
+	for _, entry := range strings.Split(csv, ",") {
+		name := strings.TrimSpace(entry)
+		name = strings.TrimPrefix(name, "@")
+		if name != "" {
+			lines = append(lines, name)
+		}
+	}
+	content := "# Generated from environment variable\n" + strings.Join(lines, "\n") + "\n"
+	return os.WriteFile(path, []byte(content), 0600)
 }
