@@ -22,6 +22,8 @@ services:
     image: ghcr.io/melliran/simurgh-client:latest
     container_name: simurgh-client
     restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"
     volumes:
       - ./clientdata:/clientdata
     env_file:
