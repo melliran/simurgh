@@ -68,6 +68,7 @@ jobs:
           set -e
 
           mkdir -p /opt/simurgh/data
+          chown -R 1000:1000 /opt/simurgh/data
 
           # Authenticate with ghcr.io so we can pull the private image
           echo "$GHCR_TOKEN" | docker login ghcr.io -u melliran --password-stdin
