@@ -106,27 +106,4 @@ jobs:
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no root@188.245.42.219 \
             "echo '$GHCR_TOKEN' | docker login ghcr.io -u melliran --password-stdin && cd /opt/simurgh && docker compose pull && docker compose up -d"
 
-          # Configure nginx for feed.melliran.com (only if not already set up)
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no root@188.245.42.219 'bash -s' << '"NGINXEOF"'
-          if [ ! -f /etc/nginx/sites-enabled/simurgh-feed ]; then
-            cat > /etc/nginx/sites-available/simurgh-feed << 'CONF'
-server {
-    listen 80;
-    server_name feed.melliran.com;
-    location / {
-        proxy_pass http://127.0.0.1:8080;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-}
-CONF
-            ln -s /etc/nginx/sites-available/simurgh-feed /etc/nginx/sites-enabled/simurgh-feed
-            nginx -t && systemctl reload nginx
-            certbot --nginx -d feed.melliran.com --non-interactive --agree-tos -m admin@melliran.com --redirect
-            echo "nginx + SSL configured"
-          else
-            echo "nginx already configured"
-          fi
-          NGINXEOF
-
           echo "Deployed successfully"
