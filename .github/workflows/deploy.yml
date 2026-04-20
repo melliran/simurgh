@@ -33,18 +33,6 @@ jobs:
             COMMIT=${{ github.sha }}
             DATE=${{ github.event.head_commit.timestamp }}
 
-      - name: Build and push client image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          target: client
-          push: true
-          tags: ghcr.io/melliran/simurgh-client:latest
-          build-args: |
-            VERSION=${{ github.sha }}
-            COMMIT=${{ github.sha }}
-            DATE=${{ github.event.head_commit.timestamp }}
-
       - name: Prepare deploy files
         env:
           THEFEED_DOMAIN: ${{ secrets.THEFEED_DOMAIN }}
@@ -54,7 +42,6 @@ jobs:
           TELEGRAM_PHONE: ${{ secrets.TELEGRAM_PHONE }}
           THEFEED_CHANNELS: ${{ secrets.THEFEED_CHANNELS }}
           THEFEED_X_ACCOUNTS: ${{ secrets.THEFEED_X_ACCOUNTS }}
-          FEED_PASSWORD: ${{ secrets.FEED_PASSWORD }}
           TELEGRAM_SESSION_B64: ${{ secrets.TELEGRAM_SESSION_B64 }}
         run: |
           mkdir -p deploy
@@ -69,13 +56,9 @@ jobs:
           printf 'TELEGRAM_PHONE=%s\n' "$TELEGRAM_PHONE" >> deploy/.env
           printf 'THEFEED_CHANNELS=%s\n' "$THEFEED_CHANNELS" >> deploy/.env
           printf 'THEFEED_X_ACCOUNTS=%s\n' "$THEFEED_X_ACCOUNTS" >> deploy/.env
-          printf 'FEED_PASSWORD=%s\n' "$FEED_PASSWORD" >> deploy/.env
 
           # session.json
           echo "$TELEGRAM_SESSION_B64" | base64 -d > deploy/session.json
-
-          # Caddyfile
-          cp Caddyfile deploy/Caddyfile
 
           # docker-compose.yml
           cp docker-compose.server.yml deploy/docker-compose.yml
@@ -91,19 +74,19 @@ jobs:
 
           # Create remote directories
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no root@188.245.42.219 \
-            "mkdir -p /opt/simurgh/data /opt/simurgh/clientdata /opt/simurgh/caddy/data /opt/simurgh/caddy/config && chown -R 1000:1000 /opt/simurgh/data /opt/simurgh/clientdata"
+            "mkdir -p /opt/simurgh/data && chown -R 1000:1000 /opt/simurgh/data"
 
           # Copy files
           scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
-            deploy/.env deploy/session.json deploy/Caddyfile deploy/docker-compose.yml \
+            deploy/.env deploy/session.json deploy/docker-compose.yml \
             root@188.245.42.219:/opt/simurgh/
 
           # Move session.json into data dir
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no root@188.245.42.219 \
             "mv /opt/simurgh/session.json /opt/simurgh/data/session.json"
 
-          # Pull images and restart containers
+          # Stop client container if still running, pull and restart server
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no root@188.245.42.219 \
-            "echo '$GHCR_TOKEN' | docker login ghcr.io -u melliran --password-stdin && cd /opt/simurgh && docker compose pull && docker compose up -d"
+            "echo '$GHCR_TOKEN' | docker login ghcr.io -u melliran --password-stdin && cd /opt/simurgh && docker compose stop simurgh-client 2>/dev/null || true && docker compose rm -f simurgh-client 2>/dev/null || true && docker compose pull && docker compose up -d"
 
           echo "Deployed successfully"
